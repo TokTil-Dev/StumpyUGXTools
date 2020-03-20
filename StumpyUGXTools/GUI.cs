@@ -12,7 +12,7 @@ public class GUI : Form
     private OpenFileDialog fbd;
     private TextBox logBox;
     private Button buttonSave;
-    private TextBox signature;
+    private TextBox version;
     private Button findButton;
 
     public void InitializeComponent()
@@ -22,7 +22,7 @@ public class GUI : Form
             this.fbd = new System.Windows.Forms.OpenFileDialog();
             this.logBox = new System.Windows.Forms.TextBox();
             this.buttonSave = new System.Windows.Forms.Button();
-            this.signature = new System.Windows.Forms.TextBox();
+            this.version = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // findButton
@@ -65,30 +65,32 @@ public class GUI : Form
             this.buttonSave.Name = "buttonSave";
             this.buttonSave.Size = new System.Drawing.Size(478, 27);
             this.buttonSave.TabIndex = 5;
-            this.buttonSave.Text = "Save UGX";
+            this.buttonSave.Text = "Save File";
             this.buttonSave.UseVisualStyleBackColor = true;
             this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
             // 
             // signature
             // 
-            this.signature.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.signature.Location = new System.Drawing.Point(12, 12);
-            this.signature.Name = "signature";
-            this.signature.ReadOnly = true;
-            this.signature.Size = new System.Drawing.Size(140, 13);
-            this.signature.TabIndex = 6;
-            this.signature.Text = "v0.1";
+            this.version.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.version.Location = new System.Drawing.Point(349, 13);
+            this.version.Name = "signature";
+            this.version.ReadOnly = true;
+            this.version.Size = new System.Drawing.Size(140, 13);
+            this.version.TabIndex = 6;
+            this.version.Text = "v0.1";
+            this.version.TextAlign = HorizontalAlignment.Right;
             // 
             // GUI
             // 
             this.ClientSize = new System.Drawing.Size(500, 125);
-            this.Controls.Add(this.signature);
+            this.Controls.Add(this.version);
             this.Controls.Add(this.buttonSave);
             this.Controls.Add(this.logBox);
             this.Controls.Add(this.pathBox);
             this.Controls.Add(this.findButton);
             this.Name = "GUI";
             this.Text = "UGXTools";
+        this.Icon = Icon.ExtractAssociatedIcon("ugxtools.ico");
             this.ResumeLayout(false);
             this.PerformLayout();
 
