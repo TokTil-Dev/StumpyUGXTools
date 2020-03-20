@@ -68,9 +68,10 @@ public class GUI : Form
             this.buttonSave.Text = "Save File";
             this.buttonSave.UseVisualStyleBackColor = true;
             this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
-            // 
-            // signature
-            // 
+        // 
+        // signature
+        // 
+        this.version.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right))));
             this.version.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.version.Location = new System.Drawing.Point(349, 13);
             this.version.Name = "signature";
