@@ -120,4 +120,22 @@
   <metadata name="fbd.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        AAABAAEAICAQcgAAAADoAgAAFgAAACgAAAAgAAAAQAAAAAEABAAAAAAAgAIAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAACAAACAAAAAgIAAgAAAAIAAgACAgAAAgICAAMDAwAAAAP8AAP8AAAD//wD/AAAA/wD/AP//
+        AAD///8A//////iIiIiIiI/////////////4iIiIiIj/////////////iIZnd4iIj/////////////hm
+        Z2Z4iIiIj//////////4d3ZndniIiI/////////4iHZmd2Z3iIiI////////+IhmZ3ZndmiIiP///4j/
+        +PiPhnZmd2ZoiIiP/4+I+IiIiIhmZ3ZndniIj/iPiIiIiIiIZndmd2ZoiIiP/4iIiIiIiIh2Z3ZmaIiI
+        iP93eIiIiIiHZndmZniIiPiPdmaIiIiHd2d2ZmR4iIj//2ZnZ4iHh4iHZmZkeIiIj/9md2Z4dIiIhmZm
+        RGeIiIj/d2Znd3eIiIdERERmiIiI//hmd2Z3eHd3ZABGZnd4iIj4Z3ZmZnh0AEAAZmZneIiI/4dmZ2Z3
+        REAABmZmZ4iIiPiHZnZmZmQFAGZmZmaIiIj4iHZ2Z2ZFQAZmZmZHiIiI//+GZmR0AERmZmZmZ3iIiP//
+        +IhwdEZmZmZmZmdXiIj/////h2ZmZmZmZnZnV4iI////iI92Zoh2ZnZmZ0eIiP//+I/4iIj/iGZmZmZH
+        iIj//4j///////+GZmZmSPiI//+P/4/////4+GZmZHiIj///iP//+P////+IiIiPj4///4iP///////4
+        ////iIiI//+Ij////4iI+IiIiIiIiP/4iI+P//iIiIiIiIiIiIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+</value>
+  </data>
 </root>

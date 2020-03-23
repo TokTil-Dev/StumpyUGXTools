@@ -17,6 +17,7 @@ public class GUI : Form
 
     public void InitializeComponent()
     {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GUI));
             this.findButton = new System.Windows.Forms.Button();
             this.pathBox = new System.Windows.Forms.TextBox();
             this.fbd = new System.Windows.Forms.OpenFileDialog();
@@ -68,30 +69,30 @@ public class GUI : Form
             this.buttonSave.Text = "Save File";
             this.buttonSave.UseVisualStyleBackColor = true;
             this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
-        // 
-        // signature
-        // 
-        this.version.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right))));
+            // 
+            // version
+            // 
+            this.version.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.version.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.version.Location = new System.Drawing.Point(349, 13);
-            this.version.Name = "signature";
+            this.version.Name = "version";
             this.version.ReadOnly = true;
             this.version.Size = new System.Drawing.Size(140, 13);
             this.version.TabIndex = 6;
-            this.version.Text = "v0.1";
-            this.version.TextAlign = HorizontalAlignment.Right;
+            this.version.Text = "v0.2.0";
+            this.version.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // GUI
             // 
-            this.ClientSize = new System.Drawing.Size(500, 125);
+            this.ClientSize = new System.Drawing.Size(500, 590);
             this.Controls.Add(this.version);
             this.Controls.Add(this.buttonSave);
             this.Controls.Add(this.logBox);
             this.Controls.Add(this.pathBox);
             this.Controls.Add(this.findButton);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "GUI";
             this.Text = "UGXTools";
-        this.Icon = Icon.ExtractAssociatedIcon("ugxtools.ico");
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -120,61 +121,70 @@ public class GUI : Form
 
     private void buttonLoad_Click()
     {
-        int w = ClientSize.Width;
-
-        if (pb.Length != 0)
+        foreach(BDTNode n in Program.ugx.rootNode.childNodes)
         {
-            for (int i = 0; i < pb.Length; i++)
-            {
-                pb[i].Remove(this);
-            }
-            ClientSize = new Size(w, 125);
+            TextBox tb = new TextBox();
+            Controls.Add(tb);
+            //tb.Location = new Point()
         }
 
-
-        Program.ugx = new UGXFile();
-        if(Program.ugx.Load(pathBox.Text) == -1) return;
-        if(Program.ugx.GetTexturePaths() == -1) return;
-        cnt = Program.ugx.texturePaths.Length;
-        if(cnt == 0)
         {
-            logBox.Text = "No texture paths found within this UGX.";
-            Program.ugx.Unload();
-            return;
+            //int w = ClientSize.Width;
+
+            //if (pb.Length != 0)
+            //{
+            //    for (int i = 0; i < pb.Length; i++)
+            //    {
+            //        pb[i].Remove(this);
+            //    }
+            //    ClientSize = new Size(w, 125);
+            //}
+
+
+            //Program.ugx = new UGXFile();
+            //if(Program.ugx.Load(pathBox.Text) == -1) return;
+            //if(Program.ugx.GetTexturePaths() == -1) return;
+            //cnt = Program.ugx.texturePaths.Length;
+            //if(cnt == 0)
+            //{
+            //    logBox.Text = "No texture paths found within this UGX.";
+            //    Program.ugx.Unload();
+            //    return;
+            //}
+
+
+            //int h = ClientSize.Height;
+
+            //logBox.Text = "Found " + cnt.ToString() + " texture paths in loaded UGX.";
+            //ClientSize = new Size(w, h + (25 * cnt) + 10);
+
+            //pb = new PathBox[cnt];
+            //for (int i = 0; i < cnt; i++)
+            //{
+            //    pb[i] = new PathBox(this);
+            //    pb[i].tb.Location = new Point(12, h + (25 * i));
+            //    pb[i].tb.Text = Program.ugx.texturePaths[i];
+            //    pb[i].tb.Size = new Size(w -24,h);
+            //    pb[i].b.Location = new Point(w - 32, h + (25 * i));
+            //}
+            //fileLoaded = true;
         }
-
-
-        int h = ClientSize.Height;
-
-        logBox.Text = "Found " + cnt.ToString() + " texture paths in loaded UGX.";
-        ClientSize = new Size(w, h + (25 * cnt) + 10);
-
-        pb = new PathBox[cnt];
-        for (int i = 0; i < cnt; i++)
-        {
-            pb[i] = new PathBox(this);
-            pb[i].tb.Location = new Point(12, h + (25 * i));
-            pb[i].tb.Text = Program.ugx.texturePaths[i];
-            pb[i].tb.Size = new Size(w -24,h);
-            pb[i].b.Location = new Point(w - 32, h + (25 * i));
-        }
-        fileLoaded = true;
     }
     private void buttonSave_Click(object sender, EventArgs e)
     {
-        if(!fileLoaded)
-        {
-            LogOut("There is no file loaded.");
-            return;
-        }
+        //if(!fileLoaded)
+        //{
+        //    LogOut("There is no file loaded.");
+        //    return;
+        //}
         
-        for (int i = 0; i < cnt; i++)
-        {
-            Program.ugx.texturePaths[i] = pb[i].tb.Text;
-        }
-        Program.ugx.SaveMaterialsChunk();
-        Program.ugx.Save(Program.ugx.UGXpath);
-        LogOut("UGX saved to path.");
+        //for (int i = 0; i < cnt; i++)
+        //{
+        //    Program.ugx.texturePaths[i] = pb[i].tb.Text;
+        //}
+        //Program.ugx.SaveMaterialsChunk();
+        //Program.ugx.Save(Program.ugx.UGXpath);
+        //LogOut("UGX saved to path.");
     }
 
     public void LogOut(string s)
