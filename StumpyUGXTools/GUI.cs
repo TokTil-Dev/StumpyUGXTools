@@ -121,12 +121,12 @@ public class GUI : Form
 
     private void buttonLoad_Click()
     {
-        foreach(BDTNode n in Program.ugx.rootNode.childNodes)
-        {
-            TextBox tb = new TextBox();
-            Controls.Add(tb);
-            //tb.Location = new Point()
-        }
+        //foreach(BDTNode n in Program.ugx.rootNode.childNodes)
+        //{
+        //    TextBox tb = new TextBox();
+        //    Controls.Add(tb);
+        //    //tb.Location = new Point()
+        //}
 
         {
             //int w = ClientSize.Width;

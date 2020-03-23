@@ -12,24 +12,51 @@ class BDTNode
 {
     public List<BDTNode> childNodes = new List<BDTNode>();
 
-    public BDTNameValue[] nameValue;
-    string name;
-    object value;
-    string[] attribNames;
-    object[] attribData;
-    public int layer = 0;
+    public BDTNameValue nodeNameValue;
+    public BDTNameValue[] attributeNameValues;
+
+    public int depth;
     
     public void FindChildrenInArrayRecursive(BDTNode[] nodes)
     {
-        if(parentIndex != 0xFFFF)
-        {
-            layer = nodes[parentIndex].layer + 1;
-        }
-        for (int i = 0; i < numberOfChildNodes; i++)
-        {
-            childNodes.Add(nodes[i + childNodeIndex]);
-        }
+        //if(parentIndex != 0xFFFF)
+        //{
+        //    depth = nodes[parentIndex].depth + 1;
+        //}
+        //if (childNodeIndex != 0xFFFF)
+        //{
+        //    for (int i = 0; i < numberOfChildNodes; i++)
+        //    {
+        //        childNodes.Add(nodes[i + childNodeIndex]);
+        //    }
+                //Console.WriteLine(childNodes.Count);
+        //}
         foreach (BDTNode n in childNodes) { n.FindChildrenInArrayRecursive(nodes); }
+    }
+    public void PrintFromThisNode()
+    {
+        for (int i = 0; i < depth; i++)
+        {
+            Console.Write('\t');
+        }
+        Console.Write("<" + nodeNameValue.decodedName);
+        
+        foreach(BDTNameValue b in attributeNameValues)
+        {
+            if (b.valueType == NameValueFlags_Type.STRING)
+            {
+                Console.Write(" \"" + b.decodedName + "\"=");
+                Console.Write(b.decodedValue);
+            }
+        }
+
+        Console.Write(">\n");
+
+
+        foreach (BDTNode n in childNodes)
+        {
+            n.PrintFromThisNode();
+        }
     }
 
     //raw data
@@ -39,9 +66,15 @@ class BDTNode
     public byte numberOfNameValues;
     public byte numberOfChildNodes;
 }
+enum NameValueFlags_Type { NULL, BOOL, INT, FLOAT, STRING }
 class BDTNameValue
 {
-    public UInt32 value;
+    public NameValueFlags_Type valueType;
+
+    public string decodedName;
+    public object decodedValue;
+
+    public UInt32 valueOffsetOrData;
     public UInt16 nameOffset;
     public UInt16 flags;
 }
@@ -113,9 +146,8 @@ class UGXFile
     int nameValuesSize, nameValuesCount;
     int nameDataSize;
     int valueDataSize;
-
-    public BDTNode rootNode;
-    public BDTNode[] materialTreeNodes;
+    
+    BDTNode[] nodes;
 
     public void InitTextureEditing()
     {
@@ -129,7 +161,7 @@ class UGXFile
         nameDataSize = BitConverter.ToInt32(matData.ToArray(), nameDataSizeLoc);
         valueDataSize = BitConverter.ToInt32(matData.ToArray(), valueDataSizeLoc);
 
-        BDTNode[] nodes = new BDTNode[nodesCount];
+        nodes = new BDTNode[nodesCount];
         for (int i = 0; i < nodesCount; i++)
         {
             nodes[i] = new BDTNode();
@@ -139,10 +171,64 @@ class UGXFile
             nodes[i].nameValueIndex = BitConverter.ToUInt16(thisNodeData, 4);
             nodes[i].numberOfNameValues = thisNodeData[6];
             nodes[i].numberOfChildNodes = thisNodeData[7];
-            if (nodes[i].parentIndex == 0xFFFF) { rootNode = nodes[i]; }
+            //if (nodes[i].parentIndex == 0xFFFF) { rootNode = nodes[i]; }
+
+            if (nodes[i].parentIndex != 0xFFFF)
+            {
+                nodes[nodes[i].parentIndex].childNodes.Add(nodes[i]);
+                nodes[i].depth = nodes[nodes[i].parentIndex].depth + 1;
+            }
+
+            //BDTNameValue[] nvs = new BDTNameValue[nodes[i].numberOfNameValues];
+            nodes[i].attributeNameValues = new BDTNameValue[nodes[i].numberOfNameValues - 1];
+            for (int j = 0; j < nodes[i].numberOfNameValues; j++)
+            {
+                BDTNameValue nv = new BDTNameValue();
+                byte[] thisNameValueData = matData.GetRange(((nodes[i].nameValueIndex + j) * 8) + 28 + nodesSize, 8).ToArray();
+                nv.valueOffsetOrData = BitConverter.ToUInt32(thisNameValueData, 0);
+                nv.nameOffset = BitConverter.ToUInt16(thisNameValueData, 4);
+                nv.flags = BitConverter.ToUInt16(thisNameValueData, 6);
+
+                nv.decodedName = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), 28 + nodesSize + nameValuesSize + (int)nv.nameOffset);
+                int valueType = (nv.flags >> 2) & ((1 << 3)-1); //get type of data in the nameData.
+                switch (valueType)
+                {
+                    case 0:
+                        {
+                            nv.valueType = NameValueFlags_Type.NULL;
+                            break;
+                        } //NULL
+                    case 1:
+                        {
+                            nv.valueType = NameValueFlags_Type.BOOL;
+                            break;
+                        } //BOOL;
+                    case 2:
+                        {
+                            nv.valueType = NameValueFlags_Type.INT;
+                            break;
+                        } //INT;
+                    case 3:
+                        {
+                            nv.valueType = NameValueFlags_Type.FLOAT;
+                            break;
+                        } //FLOAT;
+                    case 4:
+                        {
+                            nv.valueType = NameValueFlags_Type.STRING;
+                            nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), 28 + nodesSize + nameValuesSize + nameDataSize + (int)nv.valueOffsetOrData + 2);
+                            break;
+                        } //STRING;
+                }
+                
+                if (j == 0) nodes[i].nodeNameValue = nv;
+                //Console.WriteLine(nodes[i].nodeNameValue.decodedName);
+                else nodes[i].attributeNameValues[j - 1] = nv;
+            } //populate nodeNameValue and attributeNameValues.
+
         }
-        rootNode.FindChildrenInArrayRecursive(nodes);
         
+        nodes[0].PrintFromThisNode();
     }
 
 #endregion

@@ -43,4 +43,19 @@ static class Utils
             else { bl[i + index] = barr[i]; }
         }
     }
+    public static string GetStringFromNullTerminatedByteArray(byte[] arr, int startIndex)
+    {
+        int cnt = 0;
+        for (int i = startIndex; i < arr.Length; i++)
+        {
+            if (arr[i] != '\0')
+            {
+                cnt++;
+            }
+            else break;
+        }
+        byte[] b = new byte[cnt];
+        Array.Copy(arr, startIndex, b, 0, cnt);
+        return (Encoding.Default.GetString(b));
+    }
 }
