@@ -111,7 +111,7 @@ public class GUI : Form
     }
     private void pathBox_textChanged(object sender, EventArgs e)
     {
-        Program.LoadUGX(pathBox.Text);
+        if (Program.LoadUGX(pathBox.Text) == -1) return;
         SetupPathView();
     }
 

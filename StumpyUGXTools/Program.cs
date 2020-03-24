@@ -22,7 +22,7 @@ static class Program
     }
 
     //functions for gui consumption
-    public static void LoadUGX(string path)
+    public static int LoadUGX(string path)
     {
         if (File.Exists(path))
         {
@@ -30,10 +30,12 @@ static class Program
             ugx.InitTextureEditing();
             gui.LogOut("UGX Loaded.");
             ugxLoaded = true;
+            return 1;
         }
         else
         {
             gui.LogOut("Could not find file specified.");
+            return -1;
         }
     }
 }
