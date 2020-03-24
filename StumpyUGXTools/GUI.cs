@@ -123,40 +123,43 @@ public class GUI : Form
     List<TexturePathBox> paths = new List<TexturePathBox>();
     public void SetupPathView()
     {
-    //{
-    //    paths.Clear();
+        foreach(TexturePathBox t in paths)
+        {
+            gui.Controls.Remove(t.tb);
+        }
+        paths.Clear();
 
-    //    for (int i = 0; i < ugx.nodes.Length; i++)
-    //    {
-    //        if (ugx.nodes[i].nodeNameValue.decodedName == "Map")
-    //        {
-    //            for(int j = 0; j < ugx.nodes[i].attributeNameValues.Length; j++)
-    //            {
-    //                if (ugx.nodes[i].attributeNameValues[j].decodedName == "Name")
-    //                {
-    //                    TexturePathBox tpb = new TexturePathBox();
-    //                    tpb.tb.Location = new Point(12, 125 + (paths.Count * 25));
-    //                    tpb.tb.Text = (string)ugx.nodes[i].attributeNameValues[j].decodedValue;
-    //                    tpb.originalString = (string)ugx.nodes[i].attributeNameValues[j].decodedValue;
-    //                    tpb.linkedNode = ugx.nodes[i];
-    //                    tpb.linkedNameValueOffset = j;
-    //                    paths.Add(tpb);
-    //                }
-    //            }
-    //        }
-    //    }
-    //    gui.Size = new Size(gui.Size.Width, 164 + (paths.Count * 25) + 10);
-    //    LogOut("Found " + paths.Count.ToString() + " texture paths.");
+        foreach (BDTNode n in ugx.nodes)
+        {
+            if (n.nodeNameValue.decodedName == "Map")
+            {
+                for (int i = 0; i < n.numberOfNameValues - 1; i++)
+                {
+                    if (n.attributeNameValues[i].decodedName == "Name")
+                    {
+                        TexturePathBox tpb = new TexturePathBox();
+                        tpb.tb.Location = new Point(12, 125+25 * paths.Count);
+                        tpb.tb.Text = (string)n.attributeNameValues[i].decodedValue;
+                        tpb.originalString = (string)n.attributeNameValues[i].decodedValue;
+                        tpb.linkedNameValueIndex = n.nameValueIndex + i + 1;
+                        paths.Add(tpb);
+                    }
+                }
+            }
+        }
+        gui.Size = new Size(gui.Size.Width, 125 + (paths.Count * 25) + 45);
     }
     public void Save()
     {
-        //foreach(TexturePathBox t in paths)
-        //{
-        //    if(t.tb.Text != t.originalString)
-        //    {
-        //        ugx.EditNameValueValueDataString(t.linkedNode, t.linkedNameValueOffset, t.tb.Text);
-        //    }
-        //}
+        foreach(TexturePathBox t in paths)
+        {
+            if (t.tb.Text != t.originalString)
+            {
+                ugx.EditNameValueValueDataString(t.linkedNameValueIndex, t.tb.Text);
+            }
+        }
+        ugx.SaveNewMaterial();
+        ugx.Save(pathBox.Text);
     }
 }
 
@@ -168,14 +171,9 @@ class TexturePathBox
         tb.Size = new Size(gui.Size.Width - 40, 20);
         tb.Anchor = AnchorStyles.Right | AnchorStyles.Top;
     }
-    ~TexturePathBox()
-    {
-        gui.Controls.Remove(tb);
-    }
     public TextBox tb = new TextBox();
     public string originalString;
-    public BDTNode linkedNode;
-    public int linkedNameValueOffset;
+    public int linkedNameValueIndex;
 }
 
 //class GUI_BDTNode
