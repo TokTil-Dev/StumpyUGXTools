@@ -2,16 +2,17 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
-using System.Linq;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using static Program;
 
 public class GUI : Form
 {
     private TextBox pathBox;
     private OpenFileDialog fbd;
     private TextBox logBox;
-    private Button buttonSave;
+    private Button saveButton;
     private TextBox version;
     private Button findButton;
 
@@ -22,7 +23,7 @@ public class GUI : Form
             this.pathBox = new System.Windows.Forms.TextBox();
             this.fbd = new System.Windows.Forms.OpenFileDialog();
             this.logBox = new System.Windows.Forms.TextBox();
-            this.buttonSave = new System.Windows.Forms.Button();
+            this.saveButton = new System.Windows.Forms.Button();
             this.version = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
@@ -58,17 +59,17 @@ public class GUI : Form
             this.logBox.TabIndex = 4;
             this.logBox.Text = "Please select a UGX file, or paste in a path.";
             // 
-            // buttonSave
+            // saveButton
             // 
-            this.buttonSave.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.saveButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSave.Location = new System.Drawing.Point(11, 86);
-            this.buttonSave.Name = "buttonSave";
-            this.buttonSave.Size = new System.Drawing.Size(478, 27);
-            this.buttonSave.TabIndex = 5;
-            this.buttonSave.Text = "Save File";
-            this.buttonSave.UseVisualStyleBackColor = true;
-            this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
+            this.saveButton.Location = new System.Drawing.Point(12, 87);
+            this.saveButton.Name = "saveButton";
+            this.saveButton.Size = new System.Drawing.Size(477, 27);
+            this.saveButton.TabIndex = 5;
+            this.saveButton.Text = "Save File";
+            this.saveButton.UseVisualStyleBackColor = true;
+            this.saveButton.Click += new System.EventHandler(this.buttonSave_Click);
             // 
             // version
             // 
@@ -84,9 +85,9 @@ public class GUI : Form
             // 
             // GUI
             // 
-            this.ClientSize = new System.Drawing.Size(500, 590);
+            this.ClientSize = new System.Drawing.Size(500, 125);
             this.Controls.Add(this.version);
-            this.Controls.Add(this.buttonSave);
+            this.Controls.Add(this.saveButton);
             this.Controls.Add(this.logBox);
             this.Controls.Add(this.pathBox);
             this.Controls.Add(this.findButton);
@@ -103,121 +104,120 @@ public class GUI : Form
         {
             pathBox.Text = fbd.FileName;
         }
-        buttonLoad_Click();
-    }
-    private void buttonPaste_Click(object sender, EventArgs e)
-    {
-        pathBox.Text = Clipboard.GetText();
-    }
-
-    private void pathBox_textChanged(object sender, EventArgs e)
-    {
-        buttonLoad_Click();
-    }
-
-    bool fileLoaded = false;
-    int cnt;
-    PathBox[] pb= new PathBox[0];
-
-    private void buttonLoad_Click()
-    {
-        //foreach(BDTNode n in Program.ugx.rootNode.childNodes)
-        //{
-        //    TextBox tb = new TextBox();
-        //    Controls.Add(tb);
-        //    //tb.Location = new Point()
-        //}
-
-        {
-            //int w = ClientSize.Width;
-
-            //if (pb.Length != 0)
-            //{
-            //    for (int i = 0; i < pb.Length; i++)
-            //    {
-            //        pb[i].Remove(this);
-            //    }
-            //    ClientSize = new Size(w, 125);
-            //}
-
-
-            //Program.ugx = new UGXFile();
-            //if(Program.ugx.Load(pathBox.Text) == -1) return;
-            //if(Program.ugx.GetTexturePaths() == -1) return;
-            //cnt = Program.ugx.texturePaths.Length;
-            //if(cnt == 0)
-            //{
-            //    logBox.Text = "No texture paths found within this UGX.";
-            //    Program.ugx.Unload();
-            //    return;
-            //}
-
-
-            //int h = ClientSize.Height;
-
-            //logBox.Text = "Found " + cnt.ToString() + " texture paths in loaded UGX.";
-            //ClientSize = new Size(w, h + (25 * cnt) + 10);
-
-            //pb = new PathBox[cnt];
-            //for (int i = 0; i < cnt; i++)
-            //{
-            //    pb[i] = new PathBox(this);
-            //    pb[i].tb.Location = new Point(12, h + (25 * i));
-            //    pb[i].tb.Text = Program.ugx.texturePaths[i];
-            //    pb[i].tb.Size = new Size(w -24,h);
-            //    pb[i].b.Location = new Point(w - 32, h + (25 * i));
-            //}
-            //fileLoaded = true;
-        }
     }
     private void buttonSave_Click(object sender, EventArgs e)
     {
-        //if(!fileLoaded)
-        //{
-        //    LogOut("There is no file loaded.");
-        //    return;
-        //}
-        
-        //for (int i = 0; i < cnt; i++)
-        //{
-        //    Program.ugx.texturePaths[i] = pb[i].tb.Text;
-        //}
-        //Program.ugx.SaveMaterialsChunk();
-        //Program.ugx.Save(Program.ugx.UGXpath);
-        //LogOut("UGX saved to path.");
+        Save();
+    }
+    private void pathBox_textChanged(object sender, EventArgs e)
+    {
+        Program.LoadUGX(pathBox.Text);
+        SetupPathView();
     }
 
     public void LogOut(string s)
     {
         logBox.Text = s;
     }
+
+    List<TexturePathBox> paths = new List<TexturePathBox>();
+    public void SetupPathView()
+    {
+    //{
+    //    paths.Clear();
+
+    //    for (int i = 0; i < ugx.nodes.Length; i++)
+    //    {
+    //        if (ugx.nodes[i].nodeNameValue.decodedName == "Map")
+    //        {
+    //            for(int j = 0; j < ugx.nodes[i].attributeNameValues.Length; j++)
+    //            {
+    //                if (ugx.nodes[i].attributeNameValues[j].decodedName == "Name")
+    //                {
+    //                    TexturePathBox tpb = new TexturePathBox();
+    //                    tpb.tb.Location = new Point(12, 125 + (paths.Count * 25));
+    //                    tpb.tb.Text = (string)ugx.nodes[i].attributeNameValues[j].decodedValue;
+    //                    tpb.originalString = (string)ugx.nodes[i].attributeNameValues[j].decodedValue;
+    //                    tpb.linkedNode = ugx.nodes[i];
+    //                    tpb.linkedNameValueOffset = j;
+    //                    paths.Add(tpb);
+    //                }
+    //            }
+    //        }
+    //    }
+    //    gui.Size = new Size(gui.Size.Width, 164 + (paths.Count * 25) + 10);
+    //    LogOut("Found " + paths.Count.ToString() + " texture paths.");
+    }
+    public void Save()
+    {
+        //foreach(TexturePathBox t in paths)
+        //{
+        //    if(t.tb.Text != t.originalString)
+        //    {
+        //        ugx.EditNameValueValueDataString(t.linkedNode, t.linkedNameValueOffset, t.tb.Text);
+        //    }
+        //}
+    }
 }
 
-class PathBox
+class TexturePathBox
 {
+    public TexturePathBox()
+    {
+        gui.Controls.Add(tb);
+        tb.Size = new Size(gui.Size.Width - 40, 20);
+        tb.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+    }
+    ~TexturePathBox()
+    {
+        gui.Controls.Remove(tb);
+    }
     public TextBox tb = new TextBox();
-    public Button b = new Button();
-    public PathBox(Form c)
-    {
-        tb.Anchor = (AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right);
-        tb.Name = "button2";
-        tb.TabIndex = 2;
-        c.Controls.Add(tb);
-
-        //b.Anchor = (AnchorStyles.Top | AnchorStyles.Right);
-        //b.Image = Bitmap.FromFile("copy.png");
-        //b.Size = new Size(20, 20);
-        //b.Click += new EventHandler(click_paste);
-        //c.Controls.Add(b);
-    }
-    public void Remove(Form c)
-    {
-        c.Controls.Remove(tb);
-        c.Controls.Remove(b);
-    }
-
-    private void click_paste(object sender, EventArgs e)
-    {
-        tb.Text = Clipboard.GetText();
-    }
+    public string originalString;
+    public BDTNode linkedNode;
+    public int linkedNameValueOffset;
 }
+
+//class GUI_BDTNode
+//{
+//    //static int yTracker;
+//    public GUI_BDTNode()
+//    {
+//        gui.Controls.Add(textBox);
+//        //thisNode = rootNode;
+//        //yTracker++;
+//        //textBox.Location = new Point(25+ thisNode.depth * 35, 110 + (yTracker * 25));
+//        //textBox.Size = new Size(460 - (thisNode.depth * 35), 20);
+//        //textBox.Anchor = AnchorStyles.Right | AnchorStyles.Left | AnchorStyles.Top;
+//    }
+//    public TextBox textBox = new TextBox();
+//    public List<GUI_BDTNode> childNodes = new List<GUI_BDTNode>();
+//    BDTNode thisNode;
+//}
+//class GUI_BDTMaterialNode : GUI_BDTNode
+//{
+//    public GUI_BDTMaterialNode()
+//    {
+//        gui.Controls.Add(hideButton);
+//    }
+//    CheckBox hideButton;
+//}
+//class GUI_BDTNodeGraph
+//{
+//    GUI_BDTNodeGraph()
+//    {
+
+//    }
+
+
+//    GUI_BDTMaterialNode[] masterNodes;
+//    public void Create(BDTNode node)
+//    {
+//        masterNodes = new GUI_BDTMaterialNode[node.childNodes.Count];
+//        for(int i = 0; i < node.childNodes.Count; i++)
+//        {
+//            masterNodes[i] = new GUI_BDTMaterialNode();
+
+//        }
+//    }
+//}

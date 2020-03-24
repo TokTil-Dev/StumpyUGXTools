@@ -6,21 +6,35 @@ using System.IO;
 using System.Text;
 using MiscUtil.Conversion;
 using CRC;
-using static Program;
 
-class Program
+static class Program
 {
-    public static UGXFile ugx;
+    public static UGXFile ugx = new UGXFile();
+    public static bool ugxLoaded = false;
+
     public static GUI gui = new GUI();
     [STAThread]
     static void Main()
     {
-        ugx = new UGXFile();
-        ugx.Load("F:\\HaloWarsModding\\HaloWarsDE\\mod\\debug\\model.ug");
-        ugx.InitTextureEditing();
-        ugx.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\debug\\model.ugx");
-        ugx.Unload();
-        Console.ReadKey();
+        gui.InitializeComponent();
+        Application.EnableVisualStyles();
+        Application.Run(gui);
+    }
+
+    //functions for gui consumption
+    public static void LoadUGX(string path)
+    {
+        if (File.Exists(path))
+        {
+            ugx.Load(path);
+            ugx.InitTextureEditing();
+            gui.LogOut("UGX Loaded.");
+            ugxLoaded = true;
+        }
+        else
+        {
+            gui.LogOut("Could not find file specified.");
+        }
     }
 }
 

@@ -16,23 +16,7 @@ class BDTNode
     public BDTNameValue[] attributeNameValues;
 
     public int depth;
-    
-    public void FindChildrenInArrayRecursive(BDTNode[] nodes)
-    {
-        //if(parentIndex != 0xFFFF)
-        //{
-        //    depth = nodes[parentIndex].depth + 1;
-        //}
-        //if (childNodeIndex != 0xFFFF)
-        //{
-        //    for (int i = 0; i < numberOfChildNodes; i++)
-        //    {
-        //        childNodes.Add(nodes[i + childNodeIndex]);
-        //    }
-                //Console.WriteLine(childNodes.Count);
-        //}
-        foreach (BDTNode n in childNodes) { n.FindChildrenInArrayRecursive(nodes); }
-    }
+
     public void PrintFromThisNode()
     {
         for (int i = 0; i < depth; i++)
@@ -43,20 +27,37 @@ class BDTNode
         
         foreach(BDTNameValue b in attributeNameValues)
         {
-            if (b.valueType == NameValueFlags_Type.STRING)
+            if (b.decodedValueType == NameValueFlags_Type.STRING)
             {
                 Console.Write(" \"" + b.decodedName + "\"=");
                 Console.Write(b.decodedValue);
             }
         }
-
-        Console.Write(">\n");
-
+        if (childNodes.Count == 0)
+        {
+            Console.Write(">");
+        }
+        else
+        {
+            Console.WriteLine(">");
+        }
 
         foreach (BDTNode n in childNodes)
         {
             n.PrintFromThisNode();
         }
+
+        if (childNodes.Count != 0)
+        {
+            for (int i = 0; i < depth; i++)
+            {
+                Console.Write('\t');
+            }
+        }
+
+        Console.Write("</" + nodeNameValue.decodedName);
+
+        Console.Write(">\n");
     }
 
     //raw data
@@ -66,18 +67,20 @@ class BDTNode
     public byte numberOfNameValues;
     public byte numberOfChildNodes;
 }
+
 enum NameValueFlags_Type { NULL, BOOL, INT, FLOAT, STRING }
 class BDTNameValue
 {
-    public NameValueFlags_Type valueType;
-
     public string decodedName;
     public object decodedValue;
+
+    public NameValueFlags_Type decodedValueType;
 
     public UInt32 valueOffsetOrData;
     public UInt16 nameOffset;
     public UInt16 flags;
 }
+
 
 class UGXFile
 {
@@ -94,7 +97,7 @@ class UGXFile
     {
         if (!File.Exists(path))
         {
-            Program.gui.LogOut("Invalid file path. Please select a different location.");
+            //Program.gui.LogOut("Invalid file path. Please select a different location.");
             return -1;
         }
 
@@ -109,7 +112,7 @@ class UGXFile
         if (bec.ToUInt32(fileData.GetRange(0, 4).ToArray(), 0) != 3669653303) //check for ugx signature
         {
             fileData.Clear();
-            Program.gui.LogOut("File is not a valid UGX file. Please select a different file.");
+            //Program.gui.LogOut("File is not a valid UGX file. Please select a different file.");
             return -1;
         }
         UGXpath = path;
@@ -123,7 +126,7 @@ class UGXFile
     }
     public void Unload()
     {
-        fileData.Clear();
+        if(fileData != null) fileData.Clear();
     }
 
 #region Texture Editing
@@ -147,7 +150,7 @@ class UGXFile
     int nameDataSize;
     int valueDataSize;
     
-    BDTNode[] nodes;
+    public BDTNode[] nodes;
 
     public void InitTextureEditing()
     {
@@ -171,15 +174,24 @@ class UGXFile
             nodes[i].nameValueIndex = BitConverter.ToUInt16(thisNodeData, 4);
             nodes[i].numberOfNameValues = thisNodeData[6];
             nodes[i].numberOfChildNodes = thisNodeData[7];
-            //if (nodes[i].parentIndex == 0xFFFF) { rootNode = nodes[i]; }
 
             if (nodes[i].parentIndex != 0xFFFF)
             {
                 nodes[nodes[i].parentIndex].childNodes.Add(nodes[i]);
                 nodes[i].depth = nodes[nodes[i].parentIndex].depth + 1;
             }
+        }
+        DecodeNameValueData();
 
-            //BDTNameValue[] nvs = new BDTNameValue[nodes[i].numberOfNameValues];
+        //nodes[0].PrintFromThisNode();
+
+        //EditNameValueValueDataFloat(nodes[0].childNodes[2].childNodes[1].childNodes[0], 1, .99f);
+        //EditNameValueValueDataString(nodes[0].childNodes[2].childNodes[1].childNodes[0].childNodes[0], 1, "\\unsc\\infantry\\odst_01\\odst_01_df");
+    }
+    public void DecodeNameValueData() //populate nodeNameValue and attributeNameValues.
+    {
+        for (int i = 0; i < nodes.Length; i++)
+        {
             nodes[i].attributeNameValues = new BDTNameValue[nodes[i].numberOfNameValues - 1];
             for (int j = 0; j < nodes[i].numberOfNameValues; j++)
             {
@@ -190,45 +202,103 @@ class UGXFile
                 nv.flags = BitConverter.ToUInt16(thisNameValueData, 6);
 
                 nv.decodedName = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), 28 + nodesSize + nameValuesSize + (int)nv.nameOffset);
-                int valueType = (nv.flags >> 2) & ((1 << 3)-1); //get type of data in the nameData.
+                int valueType = (nv.flags >> 2) & ((1 << 3) - 1); //get type of data in the nameData.
                 switch (valueType)
                 {
                     case 0:
                         {
-                            nv.valueType = NameValueFlags_Type.NULL;
+                            nv.decodedValueType = NameValueFlags_Type.NULL;
                             break;
                         } //NULL
                     case 1:
                         {
-                            nv.valueType = NameValueFlags_Type.BOOL;
+                            nv.decodedValueType = NameValueFlags_Type.BOOL;
                             break;
                         } //BOOL;
                     case 2:
                         {
-                            nv.valueType = NameValueFlags_Type.INT;
+                            nv.decodedValueType = NameValueFlags_Type.INT;
                             break;
                         } //INT;
                     case 3:
                         {
-                            nv.valueType = NameValueFlags_Type.FLOAT;
+                            nv.decodedValueType = NameValueFlags_Type.FLOAT;
                             break;
                         } //FLOAT;
                     case 4:
                         {
-                            nv.valueType = NameValueFlags_Type.STRING;
-                            nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), 28 + nodesSize + nameValuesSize + nameDataSize + (int)nv.valueOffsetOrData + 2);
+                            nv.decodedValueType = NameValueFlags_Type.STRING;
+                            nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), matData.Count - valueDataSize + (int)nv.valueOffsetOrData);
                             break;
                         } //STRING;
                 }
-                
-                if (j == 0) nodes[i].nodeNameValue = nv;
-                //Console.WriteLine(nodes[i].nodeNameValue.decodedName);
-                else nodes[i].attributeNameValues[j - 1] = nv;
-            } //populate nodeNameValue and attributeNameValues.
 
+                if (j == 0) nodes[i].nodeNameValue = nv;
+                else nodes[i].attributeNameValues[j - 1] = nv;
+            }
         }
+    }
+
+    //value editing
+    public void EditNameValueValueDataString(BDTNode node, int nameValueIndex, string s)
+    {
+        BDTNameValue nv;
+        if (nameValueIndex == 0) nv = node.nodeNameValue;
+        else nv = node.attributeNameValues[nameValueIndex - 1];
+
+        Console.WriteLine(nv.decodedName);
+        nv.valueOffsetOrData = (UInt32)valueDataSize;
         
-        nodes[0].PrintFromThisNode();
+
+        //temp
+        matData.AddRange(Encoding.Default.GetBytes(s));
+        matData.Add(0x00);
+        valueDataSize += s.ToString().Length + 1;
+        //\temp
+
+        matData.ReplaceRange(BitConverter.GetBytes(nv.valueOffsetOrData), 28 + nodesSize + ((node.nameValueIndex + nameValueIndex) * 8), 4);
+        DecodeNameValueData();
+    }
+    //public void EditNameValueValueDataString(int nameValueIndex, string s)
+    //{
+    //    matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
+
+    //    //temp
+    //    matData.AddRange(Encoding.Default.GetBytes(s));
+    //    matData.Add(0x00);
+    //    valueDataSize += s.ToString().Length + 1;
+    //    //\temp
+
+    //    DecodeNameValueData();
+    //}
+    public void EditNameValueValueDataFloat(BDTNode node, int nameValueOffset, float f)
+    {
+        BDTNameValue nv;
+        if (nameValueOffset == 0) nv = node.nodeNameValue;
+        else nv = node.attributeNameValues[nameValueOffset - 1];
+
+        nv.decodedValue = f;
+
+        matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + ((node.nameValueIndex + nameValueOffset) * 8), 4);
+        DecodeNameValueData();
+    }
+
+    public void SaveNewMaterial()
+    {
+        fileData.ReplaceRange(matData.ToArray(), matChunkLoc, matData.Count);
+
+        fileData.ReplaceRange(BitConverter.GetBytes(matData.Count - 28), matChunkLoc + 8, 4);     //write new material data size to material chunks's header
+        fileData.ReplaceRange(bec.GetBytes(matData.Count), 140, 0);                               //write new material chunk size to ugx's 0x704 header
+        fileData.ReplaceRange(BitConverter.GetBytes(valueDataSize), matChunkLoc + 24, 4);         //write new material "valueData" size to materials chunk's header
+
+        Crc crc32 = new Crc(CrcStdParams.StandartParameters[CrcAlgorithms.Crc32]);
+        byte[] b32 = crc32.ComputeHash(fileData.ToArray(), matChunkLoc + 28, fileData.Count - matChunkLoc - 28);  //calc material data crc32
+        fileData.ReplaceRange(b32, matChunkLoc + 4, 4);                                                           //write material data crc32
+
+        Crc crc8 = new Crc(CrcStdParams.StandartParameters[CrcAlgorithms.Crc16Genibus]);
+        byte[] tempHeader = fileData.GetRange(matChunkLoc, 28).ToArray(); tempHeader[2] = 0x00; //temp material header without crc8
+        byte[] b8 = crc8.ComputeHash(tempHeader, 0, 28);                                        //calc material header crc16, gets trunicated to 8 bits
+        fileData.ReplaceRange(b8, matChunkLoc + 2, 1);                                          //write material header crc8
     }
 
 #endregion
