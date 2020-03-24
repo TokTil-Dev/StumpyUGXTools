@@ -7,8 +7,11 @@ using System.Text;
 using MiscUtil.Conversion;
 using CRC;
 
+
 static class Program
 {
+    public static string version = "0.2.1";
+
     public static UGXFile ugx = new UGXFile();
     public static bool ugxLoaded = false;
 

@@ -80,7 +80,7 @@ public class GUI : Form
             this.version.ReadOnly = true;
             this.version.Size = new System.Drawing.Size(140, 13);
             this.version.TabIndex = 6;
-            this.version.Text = "v0.2.0";
+            this.version.Text = Program.version;
             this.version.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // GUI
