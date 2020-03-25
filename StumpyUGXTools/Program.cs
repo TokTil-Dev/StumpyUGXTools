@@ -10,7 +10,7 @@ using CRC;
 
 static class Program
 {
-    public static string version = "0.2.1";
+    public static string version = "0.3.0";
 
     public static UGXFile ugx = new UGXFile();
     public static bool ugxLoaded = false;
@@ -29,7 +29,7 @@ static class Program
     {
         if (File.Exists(path))
         {
-            ugx.Load(path);
+            if (ugx.Load(path) == -1) { return - 1; }
             ugx.InitTextureEditing();
             gui.LogOut("UGX Loaded.");
             ugxLoaded = true;

@@ -76,7 +76,7 @@ class BDTNameValue
 
     public NameValueFlags_Type decodedValueType;
 
-    public UInt32 valueOffsetOrData;
+    public object valueOffsetOrData;
     public UInt16 nameOffset;
     public UInt16 flags;
 }
@@ -181,14 +181,9 @@ class UGXFile
                 nodes[i].depth = nodes[nodes[i].parentIndex].depth + 1;
             }
         }
-        DecodeNameValueData();
-
-        //nodes[0].PrintFromThisNode();
-
-        //EditNameValueValueDataFloat(nodes[0].childNodes[2].childNodes[1].childNodes[0], 1, .99f);
-        //EditNameValueValueDataString(nodes[0].childNodes[2].childNodes[1].childNodes[0].childNodes[0], 1, "\\unsc\\infantry\\odst_01\\odst_01_df");
+        DecodeNameValueValues();
     }
-    public void DecodeNameValueData() //populate nodeNameValue and attributeNameValues.
+    public void DecodeNameValueValues()
     {
         for (int i = 0; i < nodes.Length; i++)
         {
@@ -197,7 +192,6 @@ class UGXFile
             {
                 BDTNameValue nv = new BDTNameValue();
                 byte[] thisNameValueData = matData.GetRange(((nodes[i].nameValueIndex + j) * 8) + 28 + nodesSize, 8).ToArray();
-                nv.valueOffsetOrData = BitConverter.ToUInt32(thisNameValueData, 0);
                 nv.nameOffset = BitConverter.ToUInt16(thisNameValueData, 4);
                 nv.flags = BitConverter.ToUInt16(thisNameValueData, 6);
 
@@ -222,11 +216,14 @@ class UGXFile
                         } //INT;
                     case 3:
                         {
+                            nv.valueOffsetOrData = thisNameValueData;
                             nv.decodedValueType = NameValueFlags_Type.FLOAT;
+                            nv.decodedValue = BitConverter.ToSingle((byte[])nv.valueOffsetOrData, 0);
                             break;
                         } //FLOAT;
                     case 4:
                         {
+                            nv.valueOffsetOrData = BitConverter.ToInt32(thisNameValueData, 0);
                             nv.decodedValueType = NameValueFlags_Type.STRING;
                             nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), matData.Count - valueDataSize + (int)nv.valueOffsetOrData);
                             break;
@@ -239,49 +236,23 @@ class UGXFile
         }
     }
 
-    //value editing
-    //public void EditNameValueValueDataString(BDTNode node, int nameValueIndex, string s)
-    //{
-    //    BDTNameValue nv;
-    //    if (nameValueIndex == 0) nv = node.nodeNameValue;
-    //    else nv = node.attributeNameValues[nameValueIndex - 1];
-
-    //    Console.WriteLine(nv.decodedName);
-    //    nv.valueOffsetOrData = (UInt32)valueDataSize;
-        
-
-    //    //temp
-    //    matData.AddRange(Encoding.Default.GetBytes(s));
-    //    matData.Add(0x00);
-    //    valueDataSize += s.ToString().Length + 1;
-    //    //\temp
-
-    //    matData.ReplaceRange(BitConverter.GetBytes(nv.valueOffsetOrData), 28 + nodesSize + ((node.nameValueIndex + nameValueIndex) * 8), 4);
-    //    DecodeNameValueData();
-    //}
     public void EditNameValueValueDataString(int nameValueIndex, string s)
     {
         matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
 
-        //temp
+        //temp (maybe)
         matData.AddRange(Encoding.Default.GetBytes(s));
         matData.Add(0x00);
         valueDataSize += s.ToString().Length + 1;
         //\temp
 
-        DecodeNameValueData();
+        DecodeNameValueValues();
     }
-    //public void EditNameValueValueDataFloat(BDTNode node, int nameValueOffset, float f)
-    //{
-    //    BDTNameValue nv;
-    //    if (nameValueOffset == 0) nv = node.nodeNameValue;
-    //    else nv = node.attributeNameValues[nameValueOffset - 1];
-
-    //    nv.decodedValue = f;
-
-    //    matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + ((node.nameValueIndex + nameValueOffset) * 8), 4);
-    //    DecodeNameValueData();
-    //}
+    public void EditNameValueValueDataFloat(BDTNode node, int nameValueOffset, float f)
+    {
+        matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + ((nameValueOffset) * 8), 4);
+        DecodeNameValueValues();
+    }
 
     public void SaveNewMaterial()
     {
