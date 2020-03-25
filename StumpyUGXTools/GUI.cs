@@ -20,6 +20,7 @@ class GUI : Form
 
     public void InitializeComponent()
     {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GUI));
             this.findButton = new System.Windows.Forms.Button();
             this.pathBox = new System.Windows.Forms.TextBox();
@@ -88,17 +89,19 @@ class GUI : Form
             // 
             // tabControl
             // 
+            this.tabControl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.tabControl.Location = new System.Drawing.Point(12, 119);
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
             this.tabControl.Size = new System.Drawing.Size(626, 23);
             this.tabControl.TabIndex = 7;
             this.tabControl.SelectedIndexChanged += new System.EventHandler(this.tabControl_SelectedIndexChanged);
-            this.tabControl.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
-        // 
-        // GUI
-        // 
-        this.ClientSize = new System.Drawing.Size(650, 120);
+
+            // 
+            // GUI
+            // 
+            this.ClientSize = new System.Drawing.Size(650, 120);
             this.Controls.Add(this.tabControl);
             this.Controls.Add(this.version);
             this.Controls.Add(this.saveButton);
@@ -112,6 +115,52 @@ class GUI : Form
             this.PerformLayout();
 
     }
+    public void LogOut(string s)
+    {
+        logBox.Text = s;
+    }
+
+    AttribBox[] attribBoxes = new AttribBox[12];
+    PathBox[] pathBoxes = new PathBox[13];
+    public List<MatData> matDat = new List<MatData>();
+    public void Init()
+    {
+        SuspendLayout();
+        for(int i = 0; i < 12; i++)
+        {
+            if (i == 0) attribBoxes[i] = new AttribBox("SpecPower", i);
+            if (i == 1) attribBoxes[i] = new AttribBox("SpecColorR", i);
+            if (i == 2) attribBoxes[i] = new AttribBox("SpecColorG", i);
+            if (i == 3) attribBoxes[i] = new AttribBox("SpecColorB", i);
+            if (i == 4) attribBoxes[i] = new AttribBox("EnvReflectivity", i);
+            if (i == 5) attribBoxes[i] = new AttribBox("EnvSharpness", i);
+            if (i == 6) attribBoxes[i] = new AttribBox("EnvFresnel", i);
+            if (i == 7) attribBoxes[i] = new AttribBox("EnvFresnelPower", i);
+            if (i == 8) attribBoxes[i] = new AttribBox("AccessoryIndex", i);
+            if (i == 9) attribBoxes[i] = new AttribBox("Flags", i);
+            if (i == 10) attribBoxes[i] = new AttribBox("BlendType", i);
+            if (i == 11) attribBoxes[i] = new AttribBox("Opacity", i);
+        }
+        for (int i = 0; i < 13; i++)
+        {
+            if (i == 0) pathBoxes[i] = new PathBox("Diffuse", i, i);
+            if (i == 1) pathBoxes[i] = new PathBox("Normal", i, i);
+            if (i == 2) pathBoxes[i] = new PathBox("Gloss", i, i);
+            if (i == 3) pathBoxes[i] = new PathBox("Opacity", i, i);
+            if (i == 4) pathBoxes[i] = new PathBox("Xform", i, i);
+            if (i == 5) pathBoxes[i] = new PathBox("Emmissive", i, i);
+            if (i == 6) pathBoxes[i] = new PathBox("Ao", i, i);
+            if (i == 7) pathBoxes[i] = new PathBox("Env", i, i);
+            if (i == 8) pathBoxes[i] = new PathBox("EnvMask", i, i);
+            if (i == 9) pathBoxes[i] = new PathBox("EmXform", i, i);
+            if (i == 10) pathBoxes[i] = new PathBox("Distortion", i, i);
+            if (i == 11) pathBoxes[i] = new PathBox("Highlight", i, i);
+            if (i == 12) pathBoxes[i] = new PathBox("Modulate", i, i);
+        }
+        ResumeLayout(false);
+        PerformLayout();
+    }
+
     private void buttonFind_Click(object sender, EventArgs e)
     {
         if (fbd.ShowDialog() == DialogResult.OK)
@@ -129,212 +178,159 @@ class GUI : Form
         gui.ClientSize = new Size(650, 675);
         SetupPathView();
     }
-
-    public void LogOut(string s)
+    private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
     {
-        logBox.Text = s;
+        if(tabControl.SelectedIndex >= 0)
+        {
+            MatData m = matDat[tabControl.SelectedIndex];
+            for(int i = 0; i < 13; i++)
+            {
+                pathBoxes[i].Update(m.hasValue[i]);
+                pathBoxes[i].value.Text = m.pathStrings[i];
+                if (i < 12) attribBoxes[i].value.Text = m.attribValues[i];
+            }
+        }
     }
 
-
-    public List<MaterialGUIElement> matTabs = new List<MaterialGUIElement>();
+    bool init = false;
     public void SetupPathView()
     {
-        SuspendLayout();
-        foreach(MaterialGUIElement m in matTabs) m.Destroy();
-        matTabs.Clear();
-        Console.WriteLine("A");
-
-        for (int i = 0; i < ugx.nodes[0].childNodes.Count; i++)
+        if (!init) { Init(); init = true; };
+        foreach (MatData m in matDat)
         {
-            MaterialGUIElement t = new MaterialGUIElement();
-            t.SetupGUI(ugx.nodes[0].childNodes[i], i);
-            matTabs.Add(t);
+            tabControl.Controls.Remove(m.tab);
         }
-
-        LogOut("Found " + matTabs.Count + " materials.");
-
-        matTabs[tabControl.SelectedIndex].Select();
-
-        ResumeLayout();
+        matDat.Clear();
+        for(int num = 0; num < ugx.nodes[0].childNodes.Count; num++)
+        {
+            MatData d = new MatData(num);
+            for (int i = 0; i < 13; i++)
+            {
+                if(ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes.Count == 1)
+                {
+                    d.pathStrings[i] = (string)ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes[0].attributeNameValues[0].decodedValue;
+                    d.hasValue[i] = true;
+                }
+                else
+                {
+                    d.pathStrings[i] = "";
+                    d.hasValue[i] = false;
+                }
+                d.pathStrings_original[i] = d.pathStrings[i];
+            }
+            for(int i = 0; i < 12; i++)
+            {
+                if (ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue != null)
+                {
+                    d.attribValues[i] = ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue.ToString();
+                }
+            }
+            matDat.Add(d);
+        }
+        ClientSize = new Size(ClientSize.Width, 690);
+        tabControl_SelectedIndexChanged(null, null);
     }
     public void Save()
     {
     }
 
-    private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
+    private void GUI_Load(object sender, EventArgs e)
     {
-        SuspendLayout();
-        foreach (MaterialGUIElement m in matTabs)
-        {
-            m.Deselect();
-        }
-        if (tabControl.SelectedIndex >= 0) matTabs[tabControl.SelectedIndex].Select();
-        ResumeLayout();
+
     }
 }
 
-class TexturePathBox
+class AttribBox
 {
-    public TexturePathBox()
+    public AttribBox(string nameStr, int offset)
     {
-        gui.Controls.Add(tb);
-        tb.Size = new Size(gui.Size.Width - 40, 20);
-        tb.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-    }
-    public TextBox tb = new TextBox();
-    public string originalString;
-    public int linkedNameValueIndex;
-}
 
-
-class MapGUINode
-{
-    public BDTNode mapNode;
-    public TextBox tb = new TextBox();
-    public TextBox name = new TextBox();
-    public Button button = new Button();
-    public bool tbEnabled = false, buttonEnabled = false;
-
-    public MapGUINode()
-    {
-        button.Click += AddPathBox;
-    }
-
-    public void AddPathBox(object sender, EventArgs e)
-    {
-        gui.Controls.Add(tb);
-        gui.Controls.Remove(button);
-        tbEnabled = true;
-        buttonEnabled = false;
-    }
-
-    public void Enable()
-    {
-        if (tbEnabled) gui.Controls.Add(tb);
-        if (buttonEnabled) gui.Controls.Add(button);
         gui.Controls.Add(name);
+        gui.Controls.Add(value);
+
+        name.BorderStyle = BorderStyle.None;
+        name.Location = new Point(15, 150 + (offset*40));
+        name.Name = nameStr + "_name";
+        name.ReadOnly = true;
+        name.Size = new Size(100, 13);
+        name.TabIndex = offset;
+        name.Text = nameStr;
+
+        value.Location = new Point(15, 165 + (offset * 40));
+        value.Name = nameStr + "_value";
+        value.Size = new Size(100, 20);
+        value.TabIndex = offset + 1;
     }
-    public void Disable()
-    {
-        gui.Controls.Remove(tb);
-        gui.Controls.Remove(button);
-        gui.Controls.Remove(name);
-    }
+    TextBox name = new TextBox();
+    public TextBox value = new TextBox();
 }
-enum Type { uint8, Uint32, Float }
-class AttributeGUINode
+class PathBox
 {
-    public TextBox valueTB = new TextBox();
-    public TextBox attribName = new TextBox();
-    public TextBox typeDescription = new TextBox();
-    private Type type;
+    private int ind;
+    public PathBox(string nameStr, int offset, int index)
+    {
+        ind = index;
 
-    public void Enable()
-    {
-        gui.Controls.Add(attribName);
-        gui.Controls.Add(valueTB);
+        gui.Controls.Add(name);
+        gui.Controls.Add(button);
+
+        name.BorderStyle = BorderStyle.None;
+        name.Location = new Point(160, 150 + (offset * 40));
+        name.Name = nameStr + "_name";
+        name.ReadOnly = true;
+        name.Size = new Size(100, 13);
+        name.TabIndex = offset;
+        name.Text = nameStr;
+
+        value.Location = new Point(160, 165 + (offset * 40));
+        value.Name = nameStr + "_value";
+        value.Size = new Size(475, 20);
+        value.TabIndex = offset + 1;
+        value.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
+
+        button.Location = new Point(160, 165 + (offset * 40));
+        button.Size = new Size(20, 20);
+        button.Text = "+";
+        button.Click += new EventHandler(ButtonPress);
     }
-    public void Disable()
+    public void Update(bool hasValue)
     {
-        gui.Controls.Remove(attribName);
-        gui.Controls.Remove(typeDescription);
-        gui.Controls.Remove(valueTB);
+        if(hasValue)
+        {
+            gui.Controls.Add(value);
+            gui.Controls.Remove(button);
+        }
+        if(!hasValue)
+        {
+            gui.Controls.Remove(value);
+
+            gui.Controls.Add(button);
+        }
     }
+    void ButtonPress(object o, EventArgs e)
+    {
+        gui.matDat[gui.tabControl.SelectedIndex].hasValue[ind] = true;
+        Update(true);
+    }
+
+    TextBox name = new TextBox();
+    public TextBox value = new TextBox();
+    public Button button = new Button();
 }
 
-class MaterialGUIElement
+class MatData
 {
-    BDTNode node;
-    TabPage tab = new TabPage();
-    //material data
-    AttributeGUINode[] attribs = new AttributeGUINode[12];
-    //path data
-    MapGUINode[] maps = new MapGUINode[13];
-
-    public void SetupGUI(BDTNode materialRootNode, int index)
+    BDTNode linkedNode;
+    public TabPage tab = new TabPage();
+    public MatData(int index)
     {
         gui.tabControl.Controls.Add(tab);
         tab.Text = "Material " + (index + 1).ToString();
-        node = materialRootNode;
-        for(int i = 0; i < materialRootNode.childNodes[0].childNodes.Count; i++)
-        {
-            attribs[i] = new AttributeGUINode();
-
-            attribs[i].attribName.Size = new Size(100, 0);
-            attribs[i].attribName.Location = new Point(12, 145 + (40 * i));
-            attribs[i].attribName.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F);
-            attribs[i].attribName.BorderStyle = BorderStyle.None;
-            attribs[i].attribName.ReadOnly = true;
-            attribs[i].attribName.Text = (string)materialRootNode.childNodes[0].childNodes[i].nodeNameValue.decodedName;
-
-            attribs[i].valueTB.Size = new Size(100, 0);
-            attribs[i].valueTB.Location = new Point(12, 160 + (40 * i));
-            attribs[i].valueTB.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F);
-            if (materialRootNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
-            {
-                attribs[i].valueTB.Text = ((float)materialRootNode.childNodes[0].childNodes[i].nodeNameValue.decodedValue).ToString();
-            }
-
-            attribs[i].Disable();
-        }
-        for(int i = 0; i < materialRootNode.childNodes[1].childNodes.Count; i++)
-        {
-            maps[i] = new MapGUINode();
-
-            if(materialRootNode.childNodes[1].childNodes[i].childNodes.Count > 0)
-            {
-                maps[i].tb.Text = (string)materialRootNode.childNodes[1].childNodes[i].childNodes[0].attributeNameValues[0].decodedValue;
-                maps[i].tbEnabled = true;
-                maps[i].buttonEnabled = false;
-                gui.Controls.Add(maps[i].tb);
-            }
-            else
-            {
-                maps[i].tbEnabled = false;
-                maps[i].buttonEnabled = true;
-            }
-
-            maps[i].name.Location = new Point(150, 145 + (40 * i));
-            maps[i].name.Size = new Size(350, 0);
-            maps[i].name.Text = materialRootNode.childNodes[1].childNodes[i].nodeNameValue.decodedName;
-            maps[i].name.BorderStyle = BorderStyle.None;
-            maps[i].name.ReadOnly = true;
-
-            maps[i].tb.Location = new Point(150, 160 + (40 * i));
-            maps[i].tb.Size = new Size(488, 0);
-            maps[i].tb.Font = new Font("Microsoft Sans Serif", 8F);
-            maps[i].tb.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
-
-            maps[i].button.Text = "+";
-            maps[i].button.Location = new Point(150, 160 + (40 * i));
-            maps[i].button.Size = new Size(20, 20);
-            
-            maps[i].Disable();
-        }
     }
-    public void Select()
-    {
-        foreach (AttributeGUINode a in attribs) a.Enable();
-        foreach (MapGUINode mn in maps)
-        {
-            mn.Enable();
-            mn.tb.Size = new Size(gui.ClientSize.Width - 162, 20);
-        }
-    }
-    public void Deselect()
-    {
-        foreach (AttributeGUINode a in attribs) a.Disable();
-        foreach (MapGUINode mn in maps) mn.Disable();
-    }
-    public void Destroy()
-    {
-        node = null;
-        gui.Controls.Remove(tab);
-        gui.tabControl.Controls.Remove(tab);
-        for(int i = 0; i < 13; i++)
-        {
-            if (i < 12) attribs[i].Disable();
-            maps[i].Disable();
-        }
-    }
+
+    public string[] pathStrings          = new string[13];
+    public string[] pathStrings_original = new string[13];
+    public bool  [] hasValue             = new bool  [13];
+    public string[] attribValues         = new string[12];
+
 }
