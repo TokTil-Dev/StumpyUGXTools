@@ -75,8 +75,11 @@ class BDTNameValue
     public object decodedValue;
 
     public NameValueFlags_Type decodedValueType;
+    public int typeSize = 0;
+    public int totalSize = 0;
+    public bool isUnsigned = false;
 
-    public object valueOffsetOrData;
+    public byte[] valueOffsetOrData;
     public UInt16 nameOffset;
     public UInt16 flags;
 }
@@ -192,11 +195,15 @@ class UGXFile
             {
                 BDTNameValue nv = new BDTNameValue();
                 byte[] thisNameValueData = matData.GetRange(((nodes[i].nameValueIndex + j) * 8) + 28 + nodesSize, 8).ToArray();
+                nv.valueOffsetOrData = thisNameValueData;
                 nv.nameOffset = BitConverter.ToUInt16(thisNameValueData, 4);
                 nv.flags = BitConverter.ToUInt16(thisNameValueData, 6);
 
                 nv.decodedName = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), 28 + nodesSize + nameValuesSize + (int)nv.nameOffset);
                 int valueType = (nv.flags >> 2) & ((1 << 3) - 1); //get type of data in the nameData.
+                nv.typeSize = 1 << ((nv.flags >> 5) & ((1 << 3) - 1));
+                nv.totalSize = (nv.flags >> 9) & ((1 << 7) - 1);
+                nv.isUnsigned = (nv.flags & 1) != 0;
                 switch (valueType)
                 {
                     case 0:
@@ -208,26 +215,27 @@ class UGXFile
                         {
                             nv.decodedValueType = NameValueFlags_Type.BOOL;
                             break;
-                        } //BOOL;
+                        } //BOOL
                     case 2:
                         {
                             nv.decodedValueType = NameValueFlags_Type.INT;
+                            if (nv.typeSize == 4 && nv.isUnsigned) nv.decodedValue = BitConverter.ToUInt32(nv.valueOffsetOrData, 0);
+                            if (nv.typeSize == 4 && !nv.isUnsigned) nv.decodedValue = BitConverter.ToInt32(nv.valueOffsetOrData, 0);
+                            if (nv.typeSize == 1) nv.decodedValue = nv.valueOffsetOrData[0];
                             break;
-                        } //INT;
+                        } //INT
                     case 3:
                         {
-                            nv.valueOffsetOrData = thisNameValueData;
                             nv.decodedValueType = NameValueFlags_Type.FLOAT;
                             nv.decodedValue = BitConverter.ToSingle((byte[])nv.valueOffsetOrData, 0);
                             break;
-                        } //FLOAT;
+                        } //FLOAT
                     case 4:
                         {
-                            nv.valueOffsetOrData = BitConverter.ToInt32(thisNameValueData, 0);
                             nv.decodedValueType = NameValueFlags_Type.STRING;
-                            nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), matData.Count - valueDataSize + (int)nv.valueOffsetOrData);
+                            nv.decodedValue = Utils.GetStringFromNullTerminatedByteArray(matData.ToArray(), matData.Count - valueDataSize + BitConverter.ToInt32(nv.valueOffsetOrData, 0));
                             break;
-                        } //STRING;
+                        } //STRING
                 }
 
                 if (j == 0) nodes[i].nodeNameValue = nv;
