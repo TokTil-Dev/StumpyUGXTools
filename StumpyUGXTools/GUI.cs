@@ -16,6 +16,7 @@ class GUI : Form
     private TextBox version;
     private System.ComponentModel.IContainer components;
     public TabControl tabControl;
+    public ToolTip toolTips;
     private Button findButton;
 
     public void InitializeComponent()
@@ -29,6 +30,7 @@ class GUI : Form
             this.saveButton = new System.Windows.Forms.Button();
             this.version = new System.Windows.Forms.TextBox();
             this.tabControl = new System.Windows.Forms.TabControl();
+            this.toolTips = new System.Windows.Forms.ToolTip(this.components);
             this.SuspendLayout();
             // 
             // findButton
@@ -50,7 +52,6 @@ class GUI : Form
             this.pathBox.Name = "pathBox";
             this.pathBox.Size = new System.Drawing.Size(626, 23);
             this.pathBox.TabIndex = 1;
-            //this.pathBox.Text = 
             this.pathBox.TextChanged += new System.EventHandler(this.pathBox_textChanged);
             // 
             // logBox
@@ -98,7 +99,6 @@ class GUI : Form
             this.tabControl.Size = new System.Drawing.Size(626, 23);
             this.tabControl.TabIndex = 7;
             this.tabControl.SelectedIndexChanged += new System.EventHandler(this.tabControl_SelectedIndexChanged);
-
             // 
             // GUI
             // 
@@ -123,7 +123,7 @@ class GUI : Form
 
     AttribBox[] attribBoxes = new AttribBox[12];
     PathBox[] pathBoxes = new PathBox[13];
-    public List<MatData> matDat = new List<MatData>();
+    public List<MatData> matData = new List<MatData>();
     public void Init()
     {
         SuspendLayout();
@@ -171,19 +171,17 @@ class GUI : Form
     }
     private void buttonSave_Click(object sender, EventArgs e)
     {
-        Save();
+        SaveMaterial();
     }
     private void pathBox_textChanged(object sender, EventArgs e)
     {
-        if (Program.LoadUGX(pathBox.Text) == -1) return;
-        gui.ClientSize = new Size(650, 675);
         SetupPathView();
     }
     private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
     {
         if(tabControl.SelectedIndex >= 0)
         {
-            MatData m = matDat[tabControl.SelectedIndex];
+            MatData m = matData[tabControl.SelectedIndex];
             for(int i = 0; i < 13; i++)
             {
                 pathBoxes[i].Update(m.hasValue[i]);
@@ -197,14 +195,22 @@ class GUI : Form
     public void SetupPathView()
     {
         if (!init) { Init(); init = true; };
-        foreach (MatData m in matDat)
+        foreach (MatData m in matData)
         {
             tabControl.Controls.Remove(m.tab);
         }
-        matDat.Clear();
-        for(int num = 0; num < ugx.nodes[0].childNodes.Count; num++)
+        matData.Clear();
+        if (Program.LoadUGX(pathBox.Text) == -1)
+        {
+            ClearTextBoxes();
+            LockTextBoxes();
+            return;
+        }
+        UnlockTextBoxes();
+        for (int num = 0; num < ugx.nodes[0].childNodes.Count; num++)
         {
             MatData d = new MatData(num);
+            d.linkedNode = ugx.nodes[0].childNodes[num];
             for (int i = 0; i < 13; i++)
             {
                 if(ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes.Count == 1)
@@ -228,14 +234,81 @@ class GUI : Form
                 }
                 d.attribValues_original[i] = d.attribValues[i];
             }
-            matDat.Add(d);
+            matData.Add(d);
         }
         ClientSize = new Size(ClientSize.Width, 690);
-        LogOut("Found " + matDat.Count + " materials.");
+        LogOut("Found " + matData.Count + " materials.");
         tabControl_SelectedIndexChanged(null, null);
     }
-    public void Save()
+    public void SaveMaterial()
     {
+        foreach(MatData m in matData)
+        {
+            for(int i = 0; i < 13; i++)
+            {
+                if(m.hasValue[i])
+                {
+                    if(m.pathStrings[i] != m.pathStrings_original[i])
+                    {
+                        ugx.EncodeNameValueValueString(m.linkedNode.childNodes[1].childNodes[i].childNodes[0].nameValueIndex + 1, m.pathStrings[i]);
+                    }
+                }
+            }
+            for(int i = 0; i < 12; i++)
+            {
+                if(m.attribValues[i] != m.attribValues_original[i])
+                {
+                    if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.INT)
+                    {
+                        UInt32 q;
+                        if(!UInt32.TryParse(m.attribValues[i], out q)) q = 0;
+                        ugx.EncodeNameValueValueUInt(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
+                    }
+                    if(m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
+                    {
+                        float q;
+                        if (!float.TryParse(m.attribValues[i], out q)) q = 0;
+                        ugx.EncodeNameValueValueFloat(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
+                    }
+                }
+            }
+        }
+        ugx.SaveNewMaterial();
+        ugx.Save(pathBox.Text);
+    }
+    void ClearTextBoxes()
+    {
+        foreach(PathBox p in pathBoxes)
+        {
+            p.value.Text = "";
+            p.Update(false);
+        }
+        foreach(AttribBox a in attribBoxes)
+        {
+            a.value.Text = "0";
+        }
+    }
+    void LockTextBoxes()
+    {
+        foreach (PathBox p in pathBoxes)
+        {
+            p.value.ReadOnly = true;
+        }
+        foreach (AttribBox a in attribBoxes)
+        {
+            a.value.ReadOnly = true;
+        }
+    }
+    void UnlockTextBoxes()
+    {
+        foreach (PathBox p in pathBoxes)
+        {
+            p.value.ReadOnly = false;
+        }
+        foreach (AttribBox a in attribBoxes)
+        {
+            a.value.ReadOnly = false;
+        }
     }
 
     private void GUI_Load(object sender, EventArgs e)
@@ -245,80 +318,6 @@ class GUI : Form
 }
 
 enum Type { FLOAT, UINT8, UINT16, UINT32 }
-class AttribBox
-{
-    int index;
-    Type t;
-    public AttribBox(string nameStr, int offset, Type type)
-    {
-        index = offset;
-        t = type;
-
-        gui.Controls.Add(name);
-        gui.Controls.Add(value);
-        gui.Controls.Add(revertButton);
-
-        name.BorderStyle = BorderStyle.None;
-        name.Location = new Point(15, 150 + (offset*40));
-        name.Name = nameStr + "_name";
-        name.Size = new Size(100, 13);
-        name.TabIndex = offset;
-        name.Text = nameStr;
-
-        value.Location = new Point(15, 165 + (offset * 40));
-        value.Name = nameStr + "_value";
-        value.Size = new Size(100, 20);
-        value.TabIndex = offset + 1;
-        value.TextChanged += new EventHandler(ValueUpdated);
-
-        revertButton.Location = new Point(117, 165 + (offset * 40));
-        revertButton.Size = new Size(20, 20);
-        revertButton.Text = "↻";
-        revertButton.Click += new EventHandler(RevertButtonPress);
-    }
-    public TextBox value = new TextBox();
-    Label name = new Label();
-    Button revertButton = new Button();
-    
-    void ValueUpdated(object o, EventArgs e)
-    {
-        if(t == Type.UINT8 || t == Type.UINT16 || t == Type.UINT32)
-        {
-            Int64 i;
-            if(!Int64.TryParse(value.Text, out i)) { value.Text = "0"; value.Select(1, 0); }
-            if (t == Type.UINT8)
-            {
-                if (i > 255) { value.Text = "255"; value.Select(3, 0); }
-                if (i < 0) {value.Text = "0"; value.Select(1, 0); }
-            }
-            if (t == Type.UINT16)
-            {
-                if (i > UInt16.MaxValue) { value.Text = UInt16.MaxValue.ToString(); value.Select(5, 0); }
-                if (i < UInt16.MinValue) { value.Text = UInt16.MinValue.ToString(); value.Select(1, 0); }
-            }
-            if (t == Type.UINT32)
-            {
-                if (i > UInt32.MaxValue) { value.Text = UInt32.MaxValue.ToString(); value.Select(10, 0); }
-                if (i < UInt32.MinValue) { value.Text = UInt32.MinValue.ToString(); value.Select(1, 0); }
-            }
-            value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9').ToArray());
-        }
-        if(t == Type.FLOAT)
-        {
-            float f;
-            if (!float.TryParse(value.Text, out f))
-            {
-                value.Text = "0";
-                value.Select(1, 0);
-            }
-            value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c== '.').ToArray());
-        }
-    }
-    void RevertButtonPress(object o, EventArgs e)
-    {
-        value.Text = gui.matDat[gui.tabControl.SelectedIndex].attribValues_original[index];
-    }
-}
 class PathBox
 {
     int index;
@@ -326,9 +325,11 @@ class PathBox
     {
         index = offset;
 
+        int x = 20; //temp offset for when the remove and add buttons are disabled, to keep the path bars from having a gap.
+        gui.Controls.Add(value);
         gui.Controls.Add(name);
-        gui.Controls.Add(buttonAdd);
-        gui.Controls.Add(buttonRemove);
+        //gui.Controls.Add(buttonAdd);
+        //gui.Controls.Add(buttonRemove);
         gui.Controls.Add(buttonRevert);
 
         name.BorderStyle = BorderStyle.None;
@@ -340,7 +341,7 @@ class PathBox
 
         value.Location = new Point(160, 165 + (offset * 40));
         value.Name = nameStr + "_value";
-        value.Size = new Size(433, 20);
+        value.Size = new Size(433 + x, 20);
         value.TabIndex = offset + 1;
         value.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
         value.TextChanged += new EventHandler(PathUpdated);
@@ -349,54 +350,71 @@ class PathBox
         buttonAdd.Size = new Size(20, 20);
         buttonAdd.Text = "+";
         buttonAdd.Click += new EventHandler(ButtonAddPress);
+        buttonAdd.Font = new Font("Microsoft Sans Serif", 10F);
 
         buttonRemove.Location = new Point(616, 165 + (offset * 40));
         buttonRemove.Size = new Size(20, 20);
         buttonRemove.Text = "×";
         buttonRemove.Click += new EventHandler(ButtonRemovePress);
         buttonRemove.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+        buttonRemove.Font = new Font("Microsoft Sans Serif", 10F);
 
-        buttonRevert.Location = new Point(595, 165 + (offset * 40));
+        buttonRevert.Location = new Point(595 + x, 165 + (offset * 40));
         buttonRevert.Size = new Size(20, 20);
-        buttonRevert.Text = "↻";
+        buttonRevert.Text = "↶";
+        buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
         buttonRevert.Click += new EventHandler(RevertButtonPress);
         buttonRevert.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+
+        gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
+        gui.toolTips.SetToolTip(buttonRemove, "Remove this texture map from this material.");
+        gui.toolTips.SetToolTip(buttonAdd, "Add a new texture map to this material.");
+
+        Update(false);
     }
+
     public void Update(bool hasValue)
     {
         if(hasValue)
         {
             gui.Controls.Add(value);
-            gui.Controls.Add(buttonRemove);
             gui.Controls.Add(buttonRevert);
-            gui.Controls.Remove(buttonAdd);
+            //gui.Controls.Add(buttonRemove); //removed for now
+            //gui.Controls.Remove(buttonAdd); //removed for now
         }
-        if(!hasValue)
+        if (!hasValue)
         {
             gui.Controls.Remove(value);
-            gui.Controls.Remove(buttonRemove);
             gui.Controls.Remove(buttonRevert);
-            gui.Controls.Add(buttonAdd);
+            //gui.Controls.Remove(buttonRemove); //removed for now
+            //gui.Controls.Add(buttonAdd);       //removed for now.
         }
     }
     void ButtonAddPress(object o, EventArgs e)
     {
-        gui.matDat[gui.tabControl.SelectedIndex].hasValue[index] = true;
-        Update(true);
+        if (gui.tabControl.SelectedIndex > -1)
+        {
+            gui.matData[gui.tabControl.SelectedIndex].hasValue[index] = true;
+            Update(true);
+        }
     }
     void ButtonRemovePress(object o, EventArgs e)
     {
-        gui.matDat[gui.tabControl.SelectedIndex].hasValue[index] = false;
-        Update(false);
+        if (gui.tabControl.SelectedIndex > -1)
+        {
+            gui.matData[gui.tabControl.SelectedIndex].hasValue[index] = false;
+            Update(false);
+        }
     }
     void RevertButtonPress(object o, EventArgs e)
     {
-        value.Text = gui.matDat[gui.tabControl.SelectedIndex].pathStrings_original[index];
+        if (gui.tabControl.SelectedIndex > -1) value.Text = gui.matData[gui.tabControl.SelectedIndex].pathStrings_original[index];
     }
     void PathUpdated(object o, EventArgs e)
     {
-        gui.matDat[gui.tabControl.SelectedIndex].pathStrings[index] = value.Text;
+        if (gui.tabControl.SelectedIndex > -1) gui.matData[gui.tabControl.SelectedIndex].pathStrings[index] = value.Text;
     }
+
 
     public TextBox value = new TextBox();
     Label name = new Label();
@@ -404,10 +422,94 @@ class PathBox
     Button buttonRemove = new Button();
     Button buttonRevert = new Button();
 }
+class AttribBox
+{
+    int index;
+    public AttribBox(string nameStr, int offset, Type type)
+    {
+        index = offset;
+        t = type;
 
+        gui.Controls.Add(name);
+        gui.Controls.Add(value);
+        gui.Controls.Add(buttonRevert);
+
+        name.BorderStyle = BorderStyle.None;
+        name.Location = new Point(15, 150 + (offset * 40));
+        name.Name = nameStr + "_name";
+        name.Size = new Size(100, 13);
+        name.TabIndex = offset;
+        name.Text = nameStr;
+
+        value.Location = new Point(15, 165 + (offset * 40));
+        value.Name = nameStr + "_value";
+        value.Size = new Size(100, 20);
+        value.TabIndex = offset + 1;
+        value.TextChanged += new EventHandler(ValueUpdated);
+
+        buttonRevert.Location = new Point(117, 165 + (offset * 40));
+        buttonRevert.Size = new Size(20, 20);
+        buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
+        buttonRevert.Text = "↶";
+        buttonRevert.Click += new EventHandler(RevertButtonPress);
+
+        gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
+    }
+
+    void ValueUpdated(object o, EventArgs e)
+    {
+        if (value.Text != "")
+        {
+            if (t == Type.UINT8 || t == Type.UINT16 || t == Type.UINT32)
+            {
+                Int64 i;
+                if (!Int64.TryParse(value.Text, out i)) { value.Text = "0"; value.Select(1, 0); }
+                if (t == Type.UINT8)
+                {
+                    if (i > 255) { value.Text = "255"; value.Select(3, 0); }
+                    if (i < 0) { value.Text = "0"; value.Select(1, 0); }
+                }
+                if (t == Type.UINT16)
+                {
+                    if (i > UInt16.MaxValue) { value.Text = UInt16.MaxValue.ToString(); value.Select(5, 0); }
+                    if (i < UInt16.MinValue) { value.Text = UInt16.MinValue.ToString(); value.Select(1, 0); }
+                }
+                if (t == Type.UINT32)
+                {
+                    if (i > UInt32.MaxValue) { value.Text = UInt32.MaxValue.ToString(); value.Select(10, 0); }
+                    if (i < UInt32.MinValue) { value.Text = UInt32.MinValue.ToString(); value.Select(1, 0); }
+                }
+                value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9').ToArray());
+            }
+            if (t == Type.FLOAT)
+            {
+                float f;
+                if (!float.TryParse(value.Text, out f))
+                {
+                    value.Text = "0";
+                    value.Select(1, 0);
+                }
+                value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
+
+            }
+        if (gui.tabControl.SelectedIndex > -1) gui.matData[gui.tabControl.SelectedIndex].attribValues[index] = value.Text;
+        }
+    }
+    void RevertButtonPress(object o, EventArgs e)
+    {
+        if (gui.tabControl.SelectedIndex > -1) value.Text = gui.matData[gui.tabControl.SelectedIndex].attribValues_original[index];
+    }
+
+
+    Type t;
+    public TextBox value = new TextBox();
+    Button buttonRevert = new Button();
+    Label name = new Label();
+
+}
 class MatData
 {
-    BDTNode linkedNode;
+    public BDTNode linkedNode;
     public TabPage tab = new TabPage();
     public MatData(int index)
     {

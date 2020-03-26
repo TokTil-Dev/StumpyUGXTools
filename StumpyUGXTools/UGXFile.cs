@@ -186,6 +186,7 @@ class UGXFile
         }
         DecodeNameValueValues();
     }
+
     public void DecodeNameValueValues()
     {
         for (int i = 0; i < nodes.Length; i++)
@@ -243,23 +244,27 @@ class UGXFile
             }
         }
     }
-
-    public void EditNameValueValueDataString(int nameValueIndex, string s)
+    public void EncodeNameValueValueString(int nameValueIndex, string s)
     {
-        matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
+            matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
+            Console.WriteLine();
+            Console.WriteLine(28 + nodesSize + (nameValueIndex * 8));
+            Console.WriteLine(nameValueIndex);
 
-        //temp (maybe)
-        matData.AddRange(Encoding.Default.GetBytes(s));
-        matData.Add(0x00);
-        valueDataSize += s.ToString().Length + 1;
-        //\temp
-
+            //temp (maybe)
+            matData.AddRange(Encoding.Default.GetBytes(s));
+            matData.Add(0x00);
+            valueDataSize += s.ToString().Length + 1;
+            //\temp
         DecodeNameValueValues();
     }
-    public void EditNameValueValueDataFloat(BDTNode node, int nameValueOffset, float f)
+    public void EncodeNameValueValueUInt(int nameValueIndex, UInt32 i)
     {
-        matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + ((nameValueOffset) * 8), 4);
-        DecodeNameValueValues();
+        matData.ReplaceRange(BitConverter.GetBytes(i), 28 + nodesSize + (nameValueIndex * 8), 4);
+    }
+    public void EncodeNameValueValueFloat(int nameValueIndex, float f)
+    {
+        matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + (nameValueIndex * 8), 4);
     }
 
     public void SaveNewMaterial()
