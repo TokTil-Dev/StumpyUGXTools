@@ -82,6 +82,8 @@ class BDTNameValue
     public byte[] valueOffsetOrData;
     public UInt16 nameOffset;
     public UInt16 flags;
+
+    public float[] f; //dirty hack
 }
 
 
@@ -227,8 +229,19 @@ class UGXFile
                         } //INT
                     case 3:
                         {
-                            nv.decodedValueType = NameValueFlags_Type.FLOAT;
-                            nv.decodedValue = BitConverter.ToSingle((byte[])nv.valueOffsetOrData, 0);
+                            if (nv.totalSize == 4)
+                            {
+                                nv.decodedValueType = NameValueFlags_Type.FLOAT;
+                                nv.decodedValue = BitConverter.ToSingle((byte[])nv.valueOffsetOrData, 0);
+                            }
+                            if (nv.totalSize == 12)
+                            {
+                                nv.decodedValue = BitConverter.ToUInt32((byte[])nv.valueOffsetOrData, 0);
+                                nv.f = new float[3];
+                                nv.f[0] = BitConverter.ToSingle(matData.GetRange((int)(matData.Count - valueDataSize + (UInt32)nv.decodedValue + 0), 4).ToArray(), 0);
+                                nv.f[1] = BitConverter.ToSingle(matData.GetRange((int)(matData.Count - valueDataSize + (UInt32)nv.decodedValue + 4), 4).ToArray(), 0);
+                                nv.f[2] = BitConverter.ToSingle(matData.GetRange((int)(matData.Count - valueDataSize + (UInt32)nv.decodedValue + 8), 4).ToArray(), 0);
+                            }
                             break;
                         } //FLOAT
                     case 4:
@@ -246,25 +259,34 @@ class UGXFile
     }
     public void EncodeNameValueValueString(int nameValueIndex, string s)
     {
-            matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
-            Console.WriteLine();
-            Console.WriteLine(28 + nodesSize + (nameValueIndex * 8));
-            Console.WriteLine(nameValueIndex);
+        matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
 
-            //temp (maybe)
-            matData.AddRange(Encoding.Default.GetBytes(s));
-            matData.Add(0x00);
-            valueDataSize += s.ToString().Length + 1;
-            //\temp
+        matData.AddRange(Encoding.Default.GetBytes(s));
+        matData.Add(0x00);
+        valueDataSize += s.ToString().Length + 1;
+
         DecodeNameValueValues();
     }
     public void EncodeNameValueValueUInt(int nameValueIndex, UInt32 i)
     {
         matData.ReplaceRange(BitConverter.GetBytes(i), 28 + nodesSize + (nameValueIndex * 8), 4);
+        DecodeNameValueValues();
     }
     public void EncodeNameValueValueFloat(int nameValueIndex, float f)
     {
         matData.ReplaceRange(BitConverter.GetBytes(f), 28 + nodesSize + (nameValueIndex * 8), 4);
+        DecodeNameValueValues();
+    }
+    public void EncodeUVWVelocity(int nameValueIndex, float f1, float f2, float f3)
+    {
+        matData.ReplaceRange(BitConverter.GetBytes((UInt32)valueDataSize), 28 + nodesSize + (nameValueIndex * 8), 4);
+        
+        matData.AddRange(BitConverter.GetBytes(f1));
+        matData.AddRange(BitConverter.GetBytes(f2));
+        matData.AddRange(BitConverter.GetBytes(f3));
+        valueDataSize += 12;
+
+        DecodeNameValueValues();
     }
 
     public void SaveNewMaterial()

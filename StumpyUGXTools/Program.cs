@@ -14,12 +14,13 @@ static class Program
 
     public static UGXFile ugx = new UGXFile();
     public static bool ugxLoaded = false;
-
     public static GUI gui = new GUI();
+
     [STAThread]
     static void Main()
     {
         gui.InitializeComponent();
+        gui.pathBox.Text = "F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\albatross_01.ugx";
         Application.EnableVisualStyles();
         Application.Run(gui);
     }
