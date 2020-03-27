@@ -10,7 +10,7 @@ using CRC;
 
 static class Program
 {
-    public static string version = "0.3.0";
+    public static string version = "0.4.1";
 
     public static UGXFile ugx = new UGXFile();
     public static bool ugxLoaded = false;
@@ -20,7 +20,8 @@ static class Program
     static void Main()
     {
         gui.InitializeComponent();
-        gui.pathBox.Text = "F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\albatross_01.ugx";
+        gui.version.Text = version;
+        //gui.pathBox.Text = "F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\albatross_01.ugx";
         Application.EnableVisualStyles();
         Application.Run(gui);
     }

@@ -13,15 +13,15 @@ class GUI : Form
     private OpenFileDialog fbd;
     private TextBox logBox;
     private Button saveButton;
-    private TextBox version;
+    public TextBox version;
     private System.ComponentModel.IContainer components;
     public TabControl tabControl;
     public ToolTip toolTips;
+    private Button reloadButton;
     private Button findButton;
 
     public void InitializeComponent()
     {
-        int x = 25;
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GUI));
             this.findButton = new System.Windows.Forms.Button();
@@ -32,6 +32,7 @@ class GUI : Form
             this.version = new System.Windows.Forms.TextBox();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.toolTips = new System.Windows.Forms.ToolTip(this.components);
+            this.reloadButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // findButton
@@ -51,7 +52,7 @@ class GUI : Form
             this.pathBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F);
             this.pathBox.Location = new System.Drawing.Point(12, 59);
             this.pathBox.Name = "pathBox";
-            this.pathBox.Size = new System.Drawing.Size(626 + x, 23);
+            this.pathBox.Size = new System.Drawing.Size(626, 23);
             this.pathBox.TabIndex = 1;
             this.pathBox.TextChanged += new System.EventHandler(this.pathBox_textChanged);
             // 
@@ -62,7 +63,7 @@ class GUI : Form
             this.logBox.Location = new System.Drawing.Point(116, 32);
             this.logBox.Name = "logBox";
             this.logBox.ReadOnly = true;
-            this.logBox.Size = new System.Drawing.Size(522 + x, 20);
+            this.logBox.Size = new System.Drawing.Size(547, 20);
             this.logBox.TabIndex = 4;
             this.logBox.Text = "Please select a UGX file, or paste in a path.";
             // 
@@ -72,7 +73,7 @@ class GUI : Form
             | System.Windows.Forms.AnchorStyles.Right)));
             this.saveButton.Location = new System.Drawing.Point(12, 86);
             this.saveButton.Name = "saveButton";
-            this.saveButton.Size = new System.Drawing.Size(626 + x, 27);
+            this.saveButton.Size = new System.Drawing.Size(651, 27);
             this.saveButton.TabIndex = 5;
             this.saveButton.Text = "Save File";
             this.saveButton.UseVisualStyleBackColor = true;
@@ -82,7 +83,7 @@ class GUI : Form
             // 
             this.version.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.version.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.version.Location = new System.Drawing.Point(498 + x, 13);
+            this.version.Location = new System.Drawing.Point(523, 13);
             this.version.Name = "version";
             this.version.ReadOnly = true;
             this.version.Size = new System.Drawing.Size(140, 13);
@@ -97,13 +98,26 @@ class GUI : Form
             this.tabControl.Location = new System.Drawing.Point(12, 119);
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
-            this.tabControl.Size = new System.Drawing.Size(626 + x, 23);
+            this.tabControl.Size = new System.Drawing.Size(626, 23);
             this.tabControl.TabIndex = 7;
             this.tabControl.SelectedIndexChanged += new System.EventHandler(this.tabControl_SelectedIndexChanged);
             // 
+            // reloadButton
+            // 
+            this.reloadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.reloadButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
+            this.reloadButton.Location = new System.Drawing.Point(639, 58);
+            this.reloadButton.Name = "reloadButton";
+            this.reloadButton.Size = new System.Drawing.Size(25, 25);
+            this.reloadButton.TabIndex = 8;
+            this.reloadButton.Text = "⟲";
+            this.reloadButton.UseVisualStyleBackColor = true;
+            this.reloadButton.Click += new System.EventHandler(this.buttonReload_Click);
+            // 
             // GUI
             // 
-            this.ClientSize = new System.Drawing.Size(650 + x, 120);
+            this.ClientSize = new System.Drawing.Size(675, 120);
+            this.Controls.Add(this.reloadButton);
             this.Controls.Add(this.tabControl);
             this.Controls.Add(this.version);
             this.Controls.Add(this.saveButton);
@@ -117,9 +131,19 @@ class GUI : Form
             this.PerformLayout();
 
     }
+    string lastString; int numRepeated = 1;
     public void LogOut(string s)
     {
-        logBox.Text = s;
+        if(s != lastString)
+        {
+            logBox.Text = s;
+            lastString = s;
+        }
+        else
+        {
+            numRepeated++;
+            logBox.Text = s + " (" + numRepeated + ")";
+        }
     }
 
     AttribBox[] attribBoxes = new AttribBox[12];
@@ -128,7 +152,8 @@ class GUI : Form
     public void Init()
     {
         SuspendLayout();
-        for(int i = 0; i < 12; i++)
+        toolTips.SetToolTip(reloadButton, "Reload the currently loaded file. Warning: you will lose all changes you have made.");
+        for (int i = 0; i < 12; i++)
         {
             if (i == 0) attribBoxes[i] = new AttribBox("SpecPower", i, Type.FLOAT);
             if (i == 1) attribBoxes[i] = new AttribBox("SpecColorR", i, Type.FLOAT);
@@ -160,7 +185,7 @@ class GUI : Form
             if (i == 12) pathBoxes[i] = new PathBox("Modulate", i);
         }
         ResumeLayout(false);
-        PerformLayout();;
+        PerformLayout(); ;
     }
 
     private void buttonFind_Click(object sender, EventArgs e)
@@ -178,12 +203,20 @@ class GUI : Form
     {
         SetupPathView();
     }
+    private void buttonReload_Click(object sender, EventArgs e)
+    {
+        SetupPathView();
+    }
+    private void GUI_Load(object sender, EventArgs e)
+    {
+
+    }
     private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
     {
-        if(tabControl.SelectedIndex >= 0)
+        if (tabControl.SelectedIndex >= 0)
         {
             MatData m = matData[tabControl.SelectedIndex];
-            for(int i = 0; i < 13; i++)
+            for (int i = 0; i < 13; i++)
             {
                 pathBoxes[i].Update(m.hasValue[i]);
                 pathBoxes[i].value.Text = m.pathStrings[i];
@@ -242,7 +275,7 @@ class GUI : Form
             }
 
 
-            for(int i = 0; i < 12; i++)
+            for (int i = 0; i < 12; i++)
             {
                 if (ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue != null)
                 {
@@ -259,19 +292,19 @@ class GUI : Form
     }
     public void SaveMaterial()
     {
-        foreach(MatData m in matData)
+        foreach (MatData m in matData)
         {
-            for(int i = 0; i < 13; i++)
+            for (int i = 0; i < 13; i++)
             {
-                if(m.hasValue[i])
+                if (m.hasValue[i])
                 {
-                    if(m.pathStrings[i] != m.pathStrings_original[i])
+                    if (m.pathStrings[i] != m.pathStrings_original[i])
                     {
                         ugx.EncodeNameValueValueString(m.linkedNode.childNodes[1].childNodes[i].childNodes[0].nameValueIndex + 1, m.pathStrings[i]);
                     }
-                    if(m.uStrings[i] != m.uStrings_original[i] || m.vStrings[i] != m.vStrings_original[i] || m.wStrings[i] != m.wStrings_original[i])
+                    if (m.uStrings[i] != m.uStrings_original[i] || m.vStrings[i] != m.vStrings_original[i] || m.wStrings[i] != m.wStrings_original[i])
                     {
-                        float q,w,e;
+                        float q, w, e;
                         float.TryParse(m.uStrings[i], out q); float.TryParse(m.vStrings[i], out w); float.TryParse(m.wStrings[i], out e);
                         ugx.EncodeUVWVelocity(m.linkedNode.childNodes[1].childNodes[i].nameValueIndex + 1, q, w, e);
                     }
@@ -281,17 +314,17 @@ class GUI : Form
                 m.vStrings_original[i] = m.vStrings[i];
                 m.wStrings_original[i] = m.wStrings[i];
             }
-            for(int i = 0; i < 12; i++)
+            for (int i = 0; i < 12; i++)
             {
-                if(m.attribValues[i] != m.attribValues_original[i])
+                if (m.attribValues[i] != m.attribValues_original[i])
                 {
                     if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.INT)
                     {
                         UInt32 q;
-                        if(!UInt32.TryParse(m.attribValues[i], out q)) q = 0;
+                        if (!UInt32.TryParse(m.attribValues[i], out q)) q = 0;
                         ugx.EncodeNameValueValueUInt(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
                     }
-                    if(m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
+                    if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
                     {
                         float q;
                         if (!float.TryParse(m.attribValues[i], out q)) q = 0;
@@ -303,15 +336,16 @@ class GUI : Form
         }
         ugx.SaveNewMaterial();
         ugx.Save(pathBox.Text);
+        LogOut("File saved.");
     }
     void ClearTextBoxes()
     {
-        foreach(PathBox p in pathBoxes)
+        foreach (PathBox p in pathBoxes)
         {
             p.value.Text = "";
             p.Update(false);
         }
-        foreach(AttribBox a in attribBoxes)
+        foreach (AttribBox a in attribBoxes)
         {
             a.value.Text = "0";
         }
@@ -345,10 +379,6 @@ class GUI : Form
         }
     }
 
-    private void GUI_Load(object sender, EventArgs e)
-    {
-
-    }
 }
 
 enum Type { FLOAT, UINT8, UINT16, UINT32 }
@@ -411,6 +441,7 @@ class PathBox
         nameUVW.Size = new Size(100, 13);
         nameUVW.TabIndex = offset;
         nameUVW.Text = "UVW Velocity";
+        nameUVW.Anchor = AnchorStyles.Right | AnchorStyles.Top;
         U.Location = new Point(595 - 95 + x, 165 + (offset * 40));
         U.Size = new Size(40, 20);
         U.Anchor = AnchorStyles.Right | AnchorStyles.Top;
@@ -437,7 +468,6 @@ class PathBox
 
         Update(false);
     }
-
     public void Update(bool hasValue)
     {
         if(hasValue)
