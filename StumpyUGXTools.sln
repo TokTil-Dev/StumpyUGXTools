@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.779
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StumpyUGXTools", "StumpyUGXTools\StumpyUGXTools.csproj", "{DA1DB87E-8964-46AB-A47B-7684E4C7B7C3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGXTools", "UGXTools\UGXTools.csproj", "{DA1DB87E-8964-46AB-A47B-7684E4C7B7C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
