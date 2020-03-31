@@ -10,14 +10,11 @@ class Program
 
     static void Main(string[] args)
     {
-        UGXFile f = new UGXFile();
-        //f.Load("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01.ugx");
-        foreach(string s in Directory.GetFiles("F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art", ".", SearchOption.AllDirectories))
-        {
-            if (s.Contains(".ugx")) f.Load(s);
-        }
-        //f.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\assault_rifle_01_out.ugx");
-        //f.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
+        Editor editor = new Editor();
+        UGXFile ugx = new UGXFile();
+        ugx.Load("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01.ugx");
+        editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\cube.fbx");
+        //ugx.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
         Console.ReadKey();
     }
 
