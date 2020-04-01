@@ -10,12 +10,15 @@ using static Program;
 
 class UGXFile
 {
-    public List<byte> header; public const int header_loc = 0; //header... duh      DABA7737
-    public List<byte> grannyData;   public int grannyData_loc; //granny file info   0x703
-    public List<byte> cachedData;   public int cachedData_loc; //cached data        0x700
-    public List<byte> vbData;       public int vbData_loc;     //vertex buffer      0x702
-    public List<byte> ibData;       public int ibData_loc;     //index buffer       0x701
-    public List<byte> matData;      public int matData_loc;    //materials          0x704
+    public List<byte> header; const int header_loc = 0; //header... duh      DABA7737
+    public List<byte> grannyData;   int grannyData_loc; //granny file info   0x703
+    public List<byte> cachedData;   int cachedData_loc; //cached data        0x700
+    public List<byte> vbData;       int vbData_loc;     //vertex buffer      0x702
+    public List<byte> ibData;       int ibData_loc;     //index buffer       0x701
+    public List<byte> matData;      int matData_loc;    //materials          0x704
+
+    public long[] subDataCount = new long[6];
+    public long[] subDataOffset = new long[6];
 
     public int Load(string path)
     {
@@ -38,7 +41,11 @@ class UGXFile
         ibData = fileData.GetRange(ibData_loc, bec.ToInt32(fileData.ToArray(), 116));
         matData = fileData.GetRange(matData_loc, bec.ToInt32(fileData.ToArray(), 140));
 
-        //
+        for (int i = 0; i < 6; i++)
+        {
+            subDataCount[i] = BitConverter.ToInt64(cachedData.GetRange(64 + (16 * i), 8).ToArray(), 0);
+            subDataOffset[i] = BitConverter.ToInt64(cachedData.GetRange(72 + (16 * i), 8).ToArray(), 0);
+        }
 
 
         return 1;
@@ -70,6 +77,56 @@ class UGXFile
         file.AddRange(matData);
         //write file.
         File.WriteAllBytes(path, file.ToArray());
+    }
+
+    struct MeshInfo
+    {
+        public int vertCount;
+        public int vertOffset;
+        public int vertSize;
+        public int vertLength;
+        public int faceCount;
+        public int faceOffset;
+        public int matID;
+        public int polyID;
+        public int boneID;
+        public string polyName;
+
+        public void Print()
+        {
+            Console.WriteLine("vertCount: " + vertCount);
+            Console.WriteLine("vertOffset: " + vertOffset);
+            Console.WriteLine("vertSize: " + vertSize);
+            Console.WriteLine("faceCount: " + faceCount);
+            Console.WriteLine("faceOffset: " + faceOffset);
+        }
+    };
+    MeshInfo[] meshInfo;
+    public void PrintFileData()
+    {
+        //cached data read
+
+        //mesh data - ("if y == 1" in the .ms).
+        meshInfo = new MeshInfo[subDataCount[0]];
+        for (int i = 0; i < subDataCount[0]; i++) //("for z=1 to subDataCount[y] do").
+        {
+            meshInfo[i] = new MeshInfo();
+            meshInfo[i].matID = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 0 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].polyID = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 4 + (152 * i), 4).ToArray(), 0);
+            /*unknown ID variable*/
+            BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 8 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].boneID = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 12 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].faceOffset = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 16 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].faceCount = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 20 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].vertOffset = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 24 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].vertLength = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 28 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].vertSize = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 32 + (152 * i), 4).ToArray(), 0);
+            meshInfo[i].vertCount = BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + 36 + (152 * i), 4).ToArray(), 0);
+            //meshInfo[i].polyName = Utils.GetStringFromNullTerminatedByteArray(cachedData.ToArray(),
+            //    BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + ((int)subDataCount[0]*152), 4).ToArray(), 0));
+
+            //Console.WriteLine(meshInfo[i].vertCount);
+        }
     }
 }
 

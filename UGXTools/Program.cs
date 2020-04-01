@@ -13,8 +13,8 @@ class Program
         Editor editor = new Editor();
         UGXFile ugx = new UGXFile();
         ugx.Load("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01.ugx");
-        editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\cube.fbx");
-        //ugx.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
+        editor.ReplaceMesh(editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\bp.fbx").meshes[0], ugx, 0);
+        ugx.Save("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
         Console.ReadKey();
     }
 

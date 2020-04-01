@@ -54,6 +54,8 @@
     <Reference Include="System.Core">
       <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.Core.dll</HintPath>
     </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions">
       <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.Data.DataSetExtensions.dll</HintPath>
@@ -67,6 +69,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Editor\Editor.cs" />
+    <Compile Include="Editor\EditorGUI.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Editor\EditorGUI.Designer.cs">
+      <DependentUpon>EditorGUI.cs</DependentUpon>
+    </Compile>
     <Compile Include="Utils\Half.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
