@@ -10,7 +10,7 @@ using CRC;
 
 static class Program
 {
-    public static string version = "0.4.1";
+    public static string version = "0.5.0";
 
     public static UGXFile ugx = new UGXFile();
     public static GUI gui = new GUI();
