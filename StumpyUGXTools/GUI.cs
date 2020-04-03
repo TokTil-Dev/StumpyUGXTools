@@ -481,6 +481,7 @@ class GUI : Form
         }
         fileLoaded = true;
         Controls.Add(editorSelecter);
+        ugxMeshList.Items.Clear();
         SetupPathView();
         SetupMeshView();
         int sel = editorSelecter.SelectedIndex;
