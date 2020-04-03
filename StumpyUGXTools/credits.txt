@@ -1,0 +1,11 @@
+CRCCsharp: meetanthony
+https://github.com/meetanthony/crccsharp
+
+MiscUtil:
+https://jonskeet.uk/csharp/miscutil/
+
+Halo Wars Docs: kornman00
+https://github.com/HaloMods/HaloWarsDocs
+
+Ensemble Studios:
+For making Halo Wars <3 rip

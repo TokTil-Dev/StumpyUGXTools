@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("UGXTools")]
+[assembly: AssemblyTitle("StumpyUGXTools")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("UGXTools")]
+[assembly: AssemblyProduct("StumpyUGXTools")]
 [assembly: AssemblyCopyright("Copyright ©  2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("e0be907c-a0f7-44c8-a9b2-dfcb5d57b439")]
+[assembly: Guid("da1db87e-8964-46ab-a47b-7684e4c7b7c3")]
 
 // Version information for an assembly consists of the following four values:
 //
