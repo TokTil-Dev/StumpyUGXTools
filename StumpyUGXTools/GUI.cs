@@ -5,102 +5,53 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Linq;
+using OpenTK.Graphics.OpenGL;
+using Assimp;
+using SystemHalf;
 using static Program;
+using StumpyUGXTools;
+using PrimitiveType = OpenTK.Graphics.OpenGL.PrimitiveType;
+using OpenTK;
+using Quaternion = OpenTK.Quaternion;
+using OpenTK.Input;
+using System.Threading;
 
-class GUI : Form
+namespace StumpyUGXTools
 {
-    public TextBox pathBox;
-    private OpenFileDialog fbd;
-    private TextBox logBox;
-    private Button saveButton;
-    public TextBox version;
-    private System.ComponentModel.IContainer components;
-    public TabControl materialSelector;
-    public ToolTip toolTips;
-    private Button reloadButton;
-    public TabControl editorSelecter;
-    private TabPage meshTab;
-    private TabPage materialTab;
-    private Button swapSelectedButton;
-    private ListBox ugxMeshList;
-    private ListBox fbxMeshList;
-    private Button importFBXButton;
-    private ComboBox boneBox;
-    private Label boneInstruction;
-    private Label meshLabelDivider;
-    private OpenFileDialog fbxFbd;
-    private Button findButton;
-
-    public void InitializeComponent()
+    class GUI : Form
     {
+        public int EditorToolSideWindowWidth;
+        public int EditorToolsLeftMargin;
+        public OpenFileDialog fbd;
+        public TextBox version;
+        private System.ComponentModel.IContainer components;
+        public ToolTip toolTips;
+        public TabControl editorSelecter;
+        private MenuStrip menuStrip;
+        private ToolStripMenuItem fileToolStripMenuItem;
+        private ToolStripMenuItem openUGXToolStripMenuItem;
+        private ToolStripMenuItem saveAsToolStripMenuItem;
+        private ToolStripMenuItem importToolStripMenuItem;
+        private ToolStripMenuItem fBXToolStripMenuItem;
+        private ToolStripMenuItem saveToolStripMenuItem;
+
+        public void InitializeComponent()
+        {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GUI));
-            this.findButton = new System.Windows.Forms.Button();
-            this.pathBox = new System.Windows.Forms.TextBox();
             this.fbd = new System.Windows.Forms.OpenFileDialog();
-            this.logBox = new System.Windows.Forms.TextBox();
-            this.saveButton = new System.Windows.Forms.Button();
             this.version = new System.Windows.Forms.TextBox();
-            this.materialSelector = new System.Windows.Forms.TabControl();
             this.toolTips = new System.Windows.Forms.ToolTip(this.components);
-            this.reloadButton = new System.Windows.Forms.Button();
             this.editorSelecter = new System.Windows.Forms.TabControl();
-            this.meshTab = new System.Windows.Forms.TabPage();
-            this.materialTab = new System.Windows.Forms.TabPage();
-            this.swapSelectedButton = new System.Windows.Forms.Button();
-            this.ugxMeshList = new System.Windows.Forms.ListBox();
-            this.fbxMeshList = new System.Windows.Forms.ListBox();
-            this.importFBXButton = new System.Windows.Forms.Button();
-            this.boneBox = new System.Windows.Forms.ComboBox();
-            this.boneInstruction = new System.Windows.Forms.Label();
-            this.meshLabelDivider = new System.Windows.Forms.Label();
-            this.fbxFbd = new System.Windows.Forms.OpenFileDialog();
-            this.editorSelecter.SuspendLayout();
+            this.menuStrip = new System.Windows.Forms.MenuStrip();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.openUGXToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fBXToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuStrip.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // findButton
-            // 
-            this.findButton.Location = new System.Drawing.Point(11, 28);
-            this.findButton.Name = "findButton";
-            this.findButton.Size = new System.Drawing.Size(101, 27);
-            this.findButton.TabIndex = 0;
-            this.findButton.Text = "Search Files";
-            this.findButton.UseVisualStyleBackColor = true;
-            this.findButton.Click += new System.EventHandler(this.buttonFind_Click);
-            // 
-            // pathBox
-            // 
-            this.pathBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.pathBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F);
-            this.pathBox.Location = new System.Drawing.Point(12, 59);
-            this.pathBox.Name = "pathBox";
-            this.pathBox.Size = new System.Drawing.Size(626, 23);
-            this.pathBox.TabIndex = 1;
-            this.pathBox.TextChanged += new System.EventHandler(this.pathBox_textChanged);
-            // 
-            // logBox
-            // 
-            this.logBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.logBox.Location = new System.Drawing.Point(116, 32);
-            this.logBox.Name = "logBox";
-            this.logBox.ReadOnly = true;
-            this.logBox.Size = new System.Drawing.Size(548, 20);
-            this.logBox.TabIndex = 4;
-            this.logBox.Text = "Please select a UGX file, or paste in a path.";
-            // 
-            // saveButton
-            // 
-            this.saveButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.saveButton.Location = new System.Drawing.Point(12, 86);
-            this.saveButton.Name = "saveButton";
-            this.saveButton.Size = new System.Drawing.Size(651, 27);
-            this.saveButton.TabIndex = 5;
-            this.saveButton.Text = "Save File";
-            this.saveButton.UseVisualStyleBackColor = true;
-            this.saveButton.Click += new System.EventHandler(this.buttonSave_Click);
             // 
             // version
             // 
@@ -114,906 +65,1012 @@ class GUI : Form
             this.version.Text = "0.0.0";
             this.version.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
-            // materialSelector
-            // 
-            this.materialSelector.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.materialSelector.Location = new System.Drawing.Point(12, 150);
-            this.materialSelector.Name = "materialSelector";
-            this.materialSelector.SelectedIndex = 0;
-            this.materialSelector.Size = new System.Drawing.Size(651, 23);
-            this.materialSelector.TabIndex = 7;
-            this.materialSelector.SelectedIndexChanged += new System.EventHandler(this.tabControl_SelectedIndexChanged);
-            // 
-            // reloadButton
-            // 
-            this.reloadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.reloadButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.reloadButton.Location = new System.Drawing.Point(639, 58);
-            this.reloadButton.Name = "reloadButton";
-            this.reloadButton.Size = new System.Drawing.Size(25, 25);
-            this.reloadButton.TabIndex = 8;
-            this.reloadButton.Text = "⟲";
-            this.reloadButton.UseVisualStyleBackColor = true;
-            this.reloadButton.Click += new System.EventHandler(this.buttonReload_Click);
-            // 
             // editorSelecter
             // 
-            this.editorSelecter.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.editorSelecter.Controls.Add(this.meshTab);
-            this.editorSelecter.Controls.Add(this.materialTab);
-            this.editorSelecter.Location = new System.Drawing.Point(11, 119);
+            this.editorSelecter.Location = new System.Drawing.Point(12, 24);
             this.editorSelecter.Name = "editorSelecter";
             this.editorSelecter.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.editorSelecter.SelectedIndex = 0;
-            this.editorSelecter.Size = new System.Drawing.Size(653, 23);
+            this.editorSelecter.Size = new System.Drawing.Size(400, 23);
             this.editorSelecter.TabIndex = 9;
-            this.editorSelecter.SelectedIndexChanged += new System.EventHandler(this.editorSelecter_SelectedIndexChanged);
+            this.editorSelecter.SelectedIndexChanged += new System.EventHandler(this.EditorSelect);
             // 
-            // meshTab
+            // menuStrip
             // 
-            this.meshTab.Location = new System.Drawing.Point(4, 22);
-            this.meshTab.Name = "meshTab";
-            this.meshTab.Padding = new System.Windows.Forms.Padding(3);
-            this.meshTab.Size = new System.Drawing.Size(645, 0);
-            this.meshTab.TabIndex = 0;
-            this.meshTab.Text = "Mesh Editor";
-            this.meshTab.UseVisualStyleBackColor = true;
+            this.menuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fileToolStripMenuItem});
+            this.menuStrip.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip.Name = "menuStrip";
+            this.menuStrip.Size = new System.Drawing.Size(1450, 24);
+            this.menuStrip.TabIndex = 0;
+            this.menuStrip.Text = "menuStrip1";
             // 
-            // materialTab
+            // fileToolStripMenuItem
             // 
-            this.materialTab.Location = new System.Drawing.Point(4, 22);
-            this.materialTab.Name = "materialTab";
-            this.materialTab.Padding = new System.Windows.Forms.Padding(3);
-            this.materialTab.Size = new System.Drawing.Size(645, 0);
-            this.materialTab.TabIndex = 1;
-            this.materialTab.Text = "Material Editor";
-            this.materialTab.UseVisualStyleBackColor = true;
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.openUGXToolStripMenuItem,
+            this.saveToolStripMenuItem,
+            this.saveAsToolStripMenuItem,
+            this.importToolStripMenuItem});
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+            this.fileToolStripMenuItem.Text = "File";
             // 
-            // swapSelectedButton
+            // openUGXToolStripMenuItem
             // 
-            this.swapSelectedButton.Location = new System.Drawing.Point(12, 181);
-            this.swapSelectedButton.Name = "swapSelectedButton";
-            this.swapSelectedButton.Size = new System.Drawing.Size(355, 27);
-            this.swapSelectedButton.TabIndex = 10;
-            this.swapSelectedButton.Text = "Swap Selected";
-            this.swapSelectedButton.UseVisualStyleBackColor = true;
-            this.swapSelectedButton.Click += new System.EventHandler(this.swapSelectedButton_Click);
+            this.openUGXToolStripMenuItem.Name = "openUGXToolStripMenuItem";
+            this.openUGXToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.openUGXToolStripMenuItem.Text = "Open UGX";
+            this.openUGXToolStripMenuItem.Click += new System.EventHandler(this.openUGXToolStripMenuItem_Click);
             // 
-            // ugxMeshList
+            // saveToolStripMenuItem
             // 
-            this.ugxMeshList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-            this.ugxMeshList.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ugxMeshList.FormattingEnabled = true;
-            this.ugxMeshList.ItemHeight = 15;
-            this.ugxMeshList.Location = new System.Drawing.Point(12, 213);
-            this.ugxMeshList.Name = "ugxMeshList";
-            this.ugxMeshList.Size = new System.Drawing.Size(167, 484);
-            this.ugxMeshList.TabIndex = 11;
+            this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveToolStripMenuItem.Text = "Save";
+            this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
             // 
-            // fbxMeshList
+            // saveAsToolStripMenuItem
             // 
-            this.fbxMeshList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-            this.fbxMeshList.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.fbxMeshList.FormattingEnabled = true;
-            this.fbxMeshList.ItemHeight = 15;
-            this.fbxMeshList.Location = new System.Drawing.Point(199, 213);
-            this.fbxMeshList.Name = "fbxMeshList";
-            this.fbxMeshList.Size = new System.Drawing.Size(167, 484);
-            this.fbxMeshList.TabIndex = 13;
+            this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveAsToolStripMenuItem.Text = "Save As...";
             // 
-            // importFBXButton
+            // importToolStripMenuItem
             // 
-            this.importFBXButton.Location = new System.Drawing.Point(12, 150);
-            this.importFBXButton.Name = "importFBXButton";
-            this.importFBXButton.Size = new System.Drawing.Size(355, 27);
-            this.importFBXButton.TabIndex = 14;
-            this.importFBXButton.Text = "Import FBX";
-            this.importFBXButton.UseVisualStyleBackColor = true;
-            this.importFBXButton.Click += new System.EventHandler(this.importFBXButton_Click);
+            this.importToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fBXToolStripMenuItem});
+            this.importToolStripMenuItem.Name = "importToolStripMenuItem";
+            this.importToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.importToolStripMenuItem.Text = "Import...";
             // 
-            // boneBox
+            // fBXToolStripMenuItem
             // 
-            this.boneBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.boneBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.boneBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.boneBox.FormattingEnabled = true;
-            this.boneBox.Location = new System.Drawing.Point(410, 167);
-            this.boneBox.Name = "boneBox";
-            this.boneBox.Size = new System.Drawing.Size(253, 23);
-            this.boneBox.TabIndex = 16;
-            // 
-            // boneInstruction
-            // 
-            this.boneInstruction.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.boneInstruction.Location = new System.Drawing.Point(408, 150);
-            this.boneInstruction.Name = "boneInstruction";
-            this.boneInstruction.Size = new System.Drawing.Size(253, 13);
-            this.boneInstruction.TabIndex = 0;
-            this.boneInstruction.Text = "Select a bone to edit:";
-            // 
-            // meshLabelDivider
-            // 
-            this.meshLabelDivider.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-            this.meshLabelDivider.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.meshLabelDivider.Location = new System.Drawing.Point(387, 152);
-            this.meshLabelDivider.Name = "meshLabelDivider";
-            this.meshLabelDivider.Size = new System.Drawing.Size(2, 545);
-            this.meshLabelDivider.TabIndex = 19;
-            // 
-            // fbxFbd
-            // 
-            this.fbxFbd.FileName = "openFileDialog1";
+            this.fBXToolStripMenuItem.Name = "fBXToolStripMenuItem";
+            this.fBXToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.fBXToolStripMenuItem.Text = "FBX";
+            this.fBXToolStripMenuItem.Click += new System.EventHandler(this.fBXToolStripMenuItem_Click);
             // 
             // GUI
             // 
-            this.ClientSize = new System.Drawing.Size(675, 720);
-            this.Controls.Add(this.fbxMeshList);
-            this.Controls.Add(this.ugxMeshList);
-            this.Controls.Add(this.importFBXButton);
-            this.Controls.Add(this.boneBox);
-            this.Controls.Add(this.boneInstruction);
-            this.Controls.Add(this.meshLabelDivider);
-            this.Controls.Add(this.swapSelectedButton);
-            this.Controls.Add(this.reloadButton);
-            this.Controls.Add(this.version);
-            this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.logBox);
-            this.Controls.Add(this.pathBox);
-            this.Controls.Add(this.findButton);
+            this.ClientSize = new System.Drawing.Size(1450, 720);
+            this.Controls.Add(this.menuStrip);
+            this.Controls.Add(this.editorSelecter);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MainMenuStrip = this.menuStrip;
+            this.MaximizeBox = false;
             this.Name = "GUI";
             this.Text = "UGXTools";
-            this.editorSelecter.ResumeLayout(false);
+            this.Load += new System.EventHandler(this.GUIInit);
+            this.menuStrip.ResumeLayout(false);
+            this.menuStrip.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
-    }
-    string lastString; int numRepeated = 1;
-    public void LogOut(string s)
-    {
-        if(s != lastString)
-        {
-            logBox.Text = s;
-            lastString = s;
-            numRepeated = 0;
         }
-        else
+        public void LogOut(string s)
         {
-            numRepeated++;
-            logBox.Text = s + " (" + numRepeated + ")";
+            Console.WriteLine(s);
+            //if(s != lastString)
+            //{
+            //    logBox.Text = s;
+            //    lastString = s;
+            //    numRepeated = 1;
+            //}
+            //else
+            //{
+            //    numRepeated++;
+            //    logBox.Text = s + " (" + numRepeated + ")";
+            //}
         }
-    }
 
-    AttribBox[] attribBoxes = new AttribBox[12];
-    PathBox[] pathBoxes = new PathBox[13];
-    public List<MatData> matData = new List<MatData>();
-    bool init = false, fileLoaded = false, fbxLoaded = true;
-    public void Init()
-    {
-        SuspendLayout();
-        toolTips.SetToolTip(reloadButton, "Reload the currently loaded file. Warning: you will lose all changes you have made.");
-        for (int i = 0; i < 12; i++)
-        {
-            if (i == 0) attribBoxes[i] = new AttribBox("SpecPower", i, AttribType.FLOAT);
-            if (i == 1) attribBoxes[i] = new AttribBox("SpecColorR", i, AttribType.FLOAT);
-            if (i == 2) attribBoxes[i] = new AttribBox("SpecColorG", i, AttribType.FLOAT);
-            if (i == 3) attribBoxes[i] = new AttribBox("SpecColorB", i, AttribType.FLOAT);
-            if (i == 4) attribBoxes[i] = new AttribBox("EnvReflectivity", i, AttribType.FLOAT);
-            if (i == 5) attribBoxes[i] = new AttribBox("EnvSharpness", i, AttribType.FLOAT);
-            if (i == 6) attribBoxes[i] = new AttribBox("EnvFresnel", i, AttribType.FLOAT);
-            if (i == 7) attribBoxes[i] = new AttribBox("EnvFresnelPower", i, AttribType.FLOAT);
-            if (i == 8) attribBoxes[i] = new AttribBox("AccessoryIndex", i, AttribType.UINT32);
-            if (i == 9) attribBoxes[i] = new AttribBox("Flags", i, AttribType.UINT32);
-            if (i == 10) attribBoxes[i] = new AttribBox("BlendType", i, AttribType.UINT8);
-            if (i == 11) attribBoxes[i] = new AttribBox("Opacity", i, AttribType.UINT8);
-        }
-        for (int i = 0; i < 13; i++)
-        {
-            if (i == 0) pathBoxes[i] = new PathBox("Diffuse", i);
-            if (i == 1) pathBoxes[i] = new PathBox("Normal", i);
-            if (i == 2) pathBoxes[i] = new PathBox("Gloss", i);
-            if (i == 3) pathBoxes[i] = new PathBox("Opacity", i);
-            if (i == 4) pathBoxes[i] = new PathBox("Xform", i);
-            if (i == 5) pathBoxes[i] = new PathBox("Emmissive", i);
-            if (i == 6) pathBoxes[i] = new PathBox("Ao", i);
-            if (i == 7) pathBoxes[i] = new PathBox("Env", i);
-            if (i == 8) pathBoxes[i] = new PathBox("EnvMask", i);
-            if (i == 9) pathBoxes[i] = new PathBox("EmXform", i);
-            if (i == 10) pathBoxes[i] = new PathBox("Distortion", i);
-            if (i == 11) pathBoxes[i] = new PathBox("Highlight", i);
-            if (i == 12) pathBoxes[i] = new PathBox("Modulate", i);
-        }
-        ResumeLayout(false);
-        PerformLayout();
-    }
+        #region Old
+        //private void buttonFind_Click(object sender, EventArgs e)
+        //{
 
-    private void buttonFind_Click(object sender, EventArgs e)
-    {
-        if (fbd.ShowDialog() == DialogResult.OK)
-        {
-            pathBox.Text = fbd.FileName;
-        }
-    }
-    private void buttonSave_Click(object sender, EventArgs e)
-    {
-        DoSave();
-    }
-    private void pathBox_textChanged(object sender, EventArgs e)
-    {
-        DoUI();
-    }
-    private void buttonReload_Click(object sender, EventArgs e)
-    {
-        DoUI();
-    }
-    private void GUI_Load(object sender, EventArgs e)
-    {
+        //}
+        //private void GUI_Load(object sender, EventArgs e)
+        //{
 
-    }
-    private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (materialSelector.SelectedIndex >= 0)
+        //}
+        //private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
+        //{
+        //    if (materialSelector.SelectedIndex >= 0)
+        //    {
+        //        MatData m = matData[materialSelector.SelectedIndex];
+        //        for (int i = 0; i < 13; i++)
+        //        {
+        //            pathBoxes[i].Update(m.hasValue[i]);
+        //            pathBoxes[i].value.Text = m.pathStrings[i];
+        //            pathBoxes[i].U.Text = m.uStrings[i];
+        //            pathBoxes[i].V.Text = m.vStrings[i];
+        //            pathBoxes[i].W.Text = m.wStrings[i];
+        //            if (i < 12) attribBoxes[i].value.Text = m.attribValues[i];
+        //        }
+        //    }
+        //}
+        //private void editorSelecter_SelectedIndexChanged(object o, EventArgs e)
+        //{
+        //    if(editorSelecter.SelectedIndex == 0)
+        //    {
+        //        SwapView(SelectedView.Mesh);
+        //    }
+        //    if(editorSelecter.SelectedIndex == 1)
+        //    {
+        //        SwapView(SelectedView.Material);
+        //        int sel = materialSelector.SelectedIndex;
+        //        materialSelector.SelectedIndex = -1;
+        //        materialSelector.SelectedIndex = sel;
+        //    }
+        //}
+        //private void swapSelectedButton_Click(object sender, EventArgs e)
+        //{
+        //    if (fileLoaded && fbxLoaded)
+        //    {
+        //        if (fbxMeshList.SelectedIndex >= 0 && ugxMeshList.SelectedIndex >= 0)
+        //        {
+        //            ugx.ReplaceMesh(ugx.fbx.meshes[fbxMeshList.SelectedIndex], ugxMeshList.SelectedIndex);
+        //            ugxMeshList.Items[ugxMeshList.SelectedIndex] = ugx.meshNames[ugxMeshList.SelectedIndex] + " (" + ugx.fbx.meshes[fbxMeshList.SelectedIndex].name + ")";
+        //        }
+        //    }
+        //}
+        //private void glControl1_Paint(object sender, EventArgs e)
+        //{
+        //    GL.Clear(ClearBufferMask.ColorBufferBit);
+        //    viewWindow.SwapBuffers();
+        //}
+        //private void openUGXToolStripMenuItem_Click(object sender, EventArgs e)
+        //{
+        //    if (fbd.ShowDialog() == DialogResult.OK)
+        //    {
+        //        DoUI();
+        //    }
+        //}
+        //private void importFBXButton_Click(object sender, EventArgs e)
+        //{
+        //    if (fbxFbd.ShowDialog() == DialogResult.OK)
+        //    {
+        //        fbxMeshList.Items.Clear();
+        //        ugx.fbx = ugx.ImportAsset(fbxFbd.FileName);
+        //        for (int i = 0; i < ugx.fbx.meshes.Count; i++)
+        //        {
+        //            fbxMeshList.Items.Add(ugx.fbx.meshes[i].name);
+        //        }
+        //        fbxLoaded = true;
+        //    }
+        //    else
+        //    {
+        //        fbxMeshList.Items.Clear();
+        //        fbxLoaded = false;
+        //    }
+        //}
+        #endregion
+
+
+        public Editor _3dEditor;
+        public MeshEditor meshEditorTab;
+        public MaterialEditor materialEditorTab;
+        #region UI
+        enum SelectedView { Null, Mesh, Material }
+        void SwapView(SelectedView v)
         {
-            MatData m = matData[materialSelector.SelectedIndex];
-            for (int i = 0; i < 13; i++)
+            if (v == SelectedView.Null)
             {
-                pathBoxes[i].Update(m.hasValue[i]);
-                pathBoxes[i].value.Text = m.pathStrings[i];
-                pathBoxes[i].U.Text = m.uStrings[i];
-                pathBoxes[i].V.Text = m.vStrings[i];
-                pathBoxes[i].W.Text = m.wStrings[i];
-                if (i < 12) attribBoxes[i].value.Text = m.attribValues[i];
+                materialEditorTab.Hide();
+                meshEditorTab.Hide();
+            }
+
+            if (v == SelectedView.Material && ugxLoaded)
+            {
+                meshEditorTab.Hide();
+                materialEditorTab.Show();
+                int i = materialEditorTab.materialSelector.SelectedIndex;
+                materialEditorTab.materialSelector.SelectedIndex = -1;
+                materialEditorTab.materialSelector.SelectedIndex = i;
+            }
+
+            if (v == SelectedView.Mesh && ugxLoaded)
+            {
+                materialEditorTab.Hide();
+                meshEditorTab.Show();
             }
         }
-    }
-    private void editorSelecter_SelectedIndexChanged(object o, EventArgs e)
-    {
-        if(editorSelecter.SelectedIndex == 0)
+        void DoUI()
         {
             SwapView(SelectedView.Mesh);
+            Controls.Add(editorSelecter);
+            materialEditorTab.SetupPathView();
+            meshEditorTab.SetupMeshView();
+            _3dEditor.InitViewport();
+
+            int sel = editorSelecter.SelectedIndex;
+            editorSelecter.SelectedIndex = -1;
+            editorSelecter.SelectedIndex = sel;
         }
-        if(editorSelecter.SelectedIndex == 1)
+        /////// WinForms Functions
+        void GUIInit(object o, EventArgs e)
         {
-            SwapView(SelectedView.Material);
-            int sel = materialSelector.SelectedIndex;
-            materialSelector.SelectedIndex = -1;
-            materialSelector.SelectedIndex = sel;
+            EditorToolSideWindowWidth = 400;
+            EditorToolsLeftMargin = 11;
+            meshEditorTab = new MeshEditor();
+            materialEditorTab = new MaterialEditor();
+            _3dEditor = new Editor();
+            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
         }
-    }
-
-    enum SelectedView { Null, Mesh, Material }
-    void SwapView(SelectedView v)
-    {
-        if(v == SelectedView.Null)
+        void EditorSelect(object o, EventArgs e)
         {
-            //disable all
-            foreach (PathBox b in pathBoxes)
+            if (editorSelecter.SelectedIndex == 0)
             {
-                b.DisableView();
+                SwapView(SelectedView.Mesh);
             }
-            foreach (AttribBox a in attribBoxes)
+            if (editorSelecter.SelectedIndex == 1)
             {
-                a.DisableView();
+                SwapView(SelectedView.Material);
             }
-            Controls.Remove(materialSelector);
-            materialSelector.SelectedIndex = -1;
-
-            Controls.Remove(meshLabelDivider);
-            Controls.Remove(fbxMeshList);
-            Controls.Remove(ugxMeshList);
-            Controls.Remove(importFBXButton);
-            Controls.Remove(boneBox);
-            Controls.Remove(boneInstruction);
-            Controls.Remove(meshLabelDivider);
-            Controls.Remove(swapSelectedButton);
         }
+        #endregion
 
-        if(v == SelectedView.Material && fileLoaded)
+        #region Loading/Saving
+        string openFilePath;
+        bool ugxLoaded = false;
+        int DoUGXLoad(string path)
         {
-            //disable mesh editor
-            Controls.Remove(meshLabelDivider);
-            Controls.Remove(fbxMeshList);
-            Controls.Remove(ugxMeshList);
-            Controls.Remove(importFBXButton);
-            Controls.Remove(boneBox);
-            Controls.Remove(boneInstruction);
-            Controls.Remove(meshLabelDivider);
-            Controls.Remove(swapSelectedButton);
-
-            //enable material editor
-            foreach (PathBox b in pathBoxes)
+            if (File.Exists(path))
             {
-                b.EnableView();
+                if (ugx.Load(path) == -1)
+                {
+                    DoUGXUnload();
+                    gui.LogOut("Invalid or corrupt file: " + path);
+                    return -1;
+                }
+                materialEditorTab.Unload();
+                ugx.fileName = Path.GetFileNameWithoutExtension(path);
+                ugx.InitTextureEditing();
+                ugx.InitMeshEditing();
+                gui.LogOut("UGX Loaded: " + path);
+                openFilePath = path;
+                ugxLoaded = true;
+                DoUI();
+                return 1;
             }
-            foreach(AttribBox a in attribBoxes)
+            else
             {
-                a.EnableView();
+                DoUGXUnload();
+                LogOut("File not found: " + path);
+                return -1;
             }
-            Controls.Add(materialSelector);
         }
-
-        if(v == SelectedView.Mesh && fileLoaded)
+        void DoUGXUnload()
         {
-            //disable material editor
-            foreach (PathBox b in pathBoxes)
-            {
-                b.DisableView();
-            }
-            foreach (AttribBox a in attribBoxes)
-            {
-                a.DisableView();
-            }
-            Controls.Remove(materialSelector);
-
-            //enable mesh editor
-            Controls.Add(meshLabelDivider);
-            Controls.Add(fbxMeshList);
-            Controls.Add(ugxMeshList);
-            Controls.Add(importFBXButton);
-            Controls.Add(boneBox);
-            Controls.Add(boneInstruction);
-            Controls.Add(meshLabelDivider);
-            Controls.Add(swapSelectedButton);
-        }
-    }
-
-    void DoUI()
-    {
-        if (!init) { Init(); init = true; };
-        foreach (MatData m in matData)
-        {
-            materialSelector.Controls.Remove(m.tab);
-        }
-        matData.Clear();
-        if (Program.LoadUGX(pathBox.Text) == -1)
-        {
-            fileLoaded = false;
+            ugxLoaded = false;
             SwapView(SelectedView.Null);
-            ClearTextBoxes();
-            return;
+            materialEditorTab.ClearTextBoxes();
+            openFilePath = "";
         }
-        fileLoaded = true;
-        Controls.Add(editorSelecter);
-        ugxMeshList.Items.Clear();
-        SetupPathView();
-        SetupMeshView();
-        int sel = editorSelecter.SelectedIndex;
-        editorSelecter.SelectedIndex = -1;
-        editorSelecter.SelectedIndex = sel;
-        ClientSize = new Size(ClientSize.Width, 720);
-    }
-    void DoSave()
-    {
-        if (!fileLoaded) return;
-        SaveMaterial();
-        ugx.SaveNewMaterial();
-        ugx.Save(pathBox.Text);
-        LogOut("File saved.");
-    }
-
-    void SetupPathView()
-    {
-        for (int num = 0; num < ugx.nodes[0].childNodes.Count; num++)
+        void DoUGXSave()
         {
-            MatData d = new MatData(num);
-            d.linkedNode = ugx.nodes[0].childNodes[num];
-            for (int i = 0; i < 13; i++)
-            {
-                if (ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes.Count == 1)
-                {
-                    d.pathStrings[i] = (string)ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes[0].attributeNameValues[0].decodedValue;
-                    d.uStrings[i] = String.Format("{0:F3}", ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[0]);
-                    d.vStrings[i] = String.Format("{0:F3}", ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[1]);
-                    d.wStrings[i] = String.Format("{0:F3}", ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[2]);
-                    d.hasValue[i] = true;
-                }
-                else
-                {
-                    d.pathStrings[i] = "";
-                    d.uStrings[i] = "0";
-                    d.vStrings[i] = "0";
-                    d.wStrings[i] = "0";
-                    d.hasValue[i] = false;
-                }
-                d.pathStrings_original[i] = d.pathStrings[i];
-                d.hasValue_original[i] = d.hasValue[i];
-                d.uStrings_original[i] = d.uStrings[i];
-                d.vStrings_original[i] = d.vStrings[i];
-                d.wStrings_original[i] = d.wStrings[i];
-
-            }
-
-
-            for (int i = 0; i < 12; i++)
-            {
-                if (ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue != null)
-                {
-                    //if (i < 8) d.attribValues[i] = string.Format("{0:F1}", ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue);
-                    d.attribValues[i] = ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue.ToString();
-                }
-                d.attribValues_original[i] = d.attribValues[i];
-            }
-            matData.Add(d);
+            if (!ugxLoaded) return;
+            materialEditorTab.SaveMaterial();
+            ugx.SaveNewMaterial();
+            ugx.Save(openFilePath);
+            LogOut("File saved.");
         }
-        LogOut("Found " + matData.Count + " materials.");
-        tabControl_SelectedIndexChanged(null, null);
-    }
-    void SaveMaterial()
-    {
-        foreach (MatData m in matData)
+        public Model ImportAsset(string path)
         {
-            for (int i = 0; i < 13; i++)
+            //use assimp to load a model.
+            AssimpContext imp = new AssimpContext();
+            Assimp.Configs.RemoveDegeneratePrimitivesConfig c = new Assimp.Configs.RemoveDegeneratePrimitivesConfig(false);
+            imp.SetConfig(c);
+            Scene asset = imp.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.FindDegenerates);
+
+            Model model = new Model();
+            model.meshes = new List<Model.Mesh>();
+            //for each mesh in the imported file, collect vertices and indices.
+            for (int i = 0; i < asset.MeshCount; i++)
             {
-                if (m.hasValue[i])
+                Model.Mesh mesh = new Model.Mesh();
+                mesh.vertices = new List<Model.Mesh.Vertex>();
+                mesh.indices = new List<int>();
+                mesh.isSkinned = false;
+                mesh.vertexSize = 24;
+                mesh.name = asset.Meshes[i].Name;
+
+                //collet vertices for this mesh
+                for (int ve = 0; ve < asset.Meshes[i].VertexCount; ve++)
                 {
-                    if (m.pathStrings[i] != m.pathStrings_original[i])
+                    Model.Mesh.Vertex v = new Model.Mesh.Vertex();
+                    v.vx = (SystemHalf.Half)asset.Meshes[i].Vertices[ve].X;
+                    v.vy = (SystemHalf.Half)asset.Meshes[i].Vertices[ve].Y;
+                    v.vz = (SystemHalf.Half)asset.Meshes[i].Vertices[ve].Z;
+                    v.nx = (SystemHalf.Half)asset.Meshes[i].Normals[ve].X;
+                    v.ny = (SystemHalf.Half)asset.Meshes[i].Normals[ve].Y;
+                    v.nz = (SystemHalf.Half)asset.Meshes[i].Normals[ve].Z;
+                    v.tu = (SystemHalf.Half)asset.Meshes[i].TextureCoordinateChannels[0][ve].X;
+                    v.tv = (SystemHalf.Half)asset.Meshes[i].TextureCoordinateChannels[0][ve].Y;
+                    mesh.vertices.Add(v);
+                }
+                //collect indices for this mesh
+                for (int j = 0; j < asset.Meshes[i].FaceCount; j++)
+                {
+                    for (int k = 0; k < asset.Meshes[i].Faces[j].IndexCount; k++)
                     {
-                        ugx.EncodeNameValueValueString(m.linkedNode.childNodes[1].childNodes[i].childNodes[0].nameValueIndex + 1, m.pathStrings[i]);
+                        mesh.indices.Add(asset.Meshes[i].Faces[j].Indices[k]);
                     }
-                    if (m.uStrings[i] != m.uStrings_original[i] || m.vStrings[i] != m.vStrings_original[i] || m.wStrings[i] != m.wStrings_original[i])
-                    {
-                        float q, w, e;
-                        float.TryParse(m.uStrings[i], out q); float.TryParse(m.vStrings[i], out w); float.TryParse(m.wStrings[i], out e);
-                        ugx.EncodeUVWVelocity(m.linkedNode.childNodes[1].childNodes[i].nameValueIndex + 1, q, w, e);
-                    }
+                    mesh.faceCount++;
                 }
-                m.pathStrings_original[i] = m.pathStrings[i];
-                m.uStrings_original[i] = m.uStrings[i];
-                m.vStrings_original[i] = m.vStrings[i];
-                m.wStrings_original[i] = m.wStrings[i];
+
+                model.meshes.Add(mesh);
             }
-            for (int i = 0; i < 12; i++)
+
+            return model;
+        }
+        /////// WinForms Functions
+        private void openUGXToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (fbd.ShowDialog() == DialogResult.OK)
             {
-                if (m.attribValues[i] != m.attribValues_original[i])
+                DoUGXLoad(fbd.FileName);
+            }
+        }
+        private void fBXToolStripMenuItem_Click(object o, EventArgs e)
+        {
+            _3dEditor.FBXImportPrompt();
+        }
+        #endregion
+
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DoUGXSave();
+        }
+    }
+
+
+    enum AttribType { FLOAT, UINT8, UINT16, UINT32 }
+    class PathBox
+    {
+        MaterialEditor materialEditor;
+        int index;
+        public PathBox(string nameStr, int offset, MaterialEditor me)
+        {
+            index = offset;
+            materialEditor = me;
+
+            int space = 42;
+            int initOffset = 80;
+            //gui.Controls.Add(value);
+            //gui.Controls.Add(name);
+            ////gui.Controls.Add(buttonAdd);
+            ////gui.Controls.Add(buttonRemove);
+            //gui.Controls.Add(buttonRevert);
+            //gui.Controls.Add(nameUVW);
+            //gui.Controls.Add(U);
+            //gui.Controls.Add(V);
+            //gui.Controls.Add(W);
+            //gui.Controls.Add(buttonRevertUVW);
+
+            //buttonAdd.Location = new Point(160 - m, 165 + y + (offset * space));
+            //buttonAdd.Size = new Size(20, 20);
+            //buttonAdd.Text = "+";
+            //buttonAdd.Click += new EventHandler(ButtonAddPress);
+            //buttonAdd.Font = new Font("Microsoft Sans Serif", 10F);
+
+            //buttonRemove.Location = new Point(616- 120 - m, 165 + y + (offset * space));
+            //buttonRemove.Size = new Size(20, 20);
+            //buttonRemove.Text = "×";
+            //buttonRemove.Click += new EventHandler(ButtonRemovePress);
+            //buttonRemove.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            //buttonRemove.Font = new Font("Microsoft Sans Serif", 10F);
+
+            name.BorderStyle = BorderStyle.None;
+            name.Location = new Point(gui.EditorToolsLeftMargin - 1, initOffset + (offset * space));
+            name.Name = nameStr + "_name";
+            name.Size = new Size(100, 13);
+            name.TabIndex = offset;
+            name.Text = nameStr;
+
+            value.Location = new Point(gui.EditorToolsLeftMargin, initOffset + 13 + (offset * space));
+            value.Name = nameStr + "_value";
+            value.Size = new Size(gui.EditorToolSideWindowWidth - 24 - 90, 20);
+            value.TabIndex = offset + 1;
+            value.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
+            value.TextChanged += new EventHandler(PathUpdated);
+
+            buttonRevert.Location = new Point(gui.EditorToolsLeftMargin + gui.EditorToolSideWindowWidth - 22, initOffset + 13 + (offset * space));
+            buttonRevert.Size = new Size(20, 20);
+            buttonRevert.Text = "↶";
+            buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
+            buttonRevert.Click += new EventHandler(RevertButtonPress);
+            buttonRevert.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+
+            nameUVW.BorderStyle = BorderStyle.None;
+            nameUVW.Location = new Point(gui.EditorToolsLeftMargin + value.Width, initOffset + (offset * space));
+            nameUVW.Name = nameStr + "_nameUVW";
+            nameUVW.Size = new Size(100, 13);
+            nameUVW.TabIndex = offset;
+            nameUVW.Text = "UVW Velocity";
+            nameUVW.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            U.Location = new Point(gui.EditorToolsLeftMargin + value.Width - 1, initOffset + 13 + (offset * space));
+            U.Size = new Size(31, 20);
+            U.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            U.TextChanged += new EventHandler(UUpdated);
+            V.Location = new Point(U.Location.X + U.Width - 1, initOffset + 13 + (offset * space));
+            V.Size = new Size(31, 20);
+            V.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            V.TextChanged += new EventHandler(VUpdated);
+            W.Location = new Point(V.Location.X + V.Width - 1, initOffset + 13 + (offset * space));
+            W.Size = new Size(31, 20);
+            W.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            W.TextChanged += new EventHandler(WUpdated);
+            //buttonRevertUVW.Location = new Point(gui.EditorToolsLeftMargin, 165 + (offset * space));
+            //buttonRevertUVW.Size = new Size(20, 20);
+            //buttonRevertUVW.Text = "↶";
+            //buttonRevertUVW.Font = new Font("Microsoft Sans Serif", 10F);
+            //buttonRevertUVW.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            //buttonRevertUVW.Click += new EventHandler(RevertPressedUVW);
+
+            gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
+            gui.toolTips.SetToolTip(buttonRevertUVW, "Revert to default value.");
+            gui.toolTips.SetToolTip(buttonRemove, "Remove this texture map from this material.");
+            gui.toolTips.SetToolTip(buttonAdd, "Add a new texture map to this material.");
+
+            Update(false);
+        }
+        public void Update(bool hasValue)
+        {
+            if (hasValue)
+            {
+                gui.Controls.Add(value);
+                gui.Controls.Add(buttonRevert);
+                //gui.Controls.Add(buttonRemove); //removed for now
+                //gui.Controls.Remove(buttonAdd); //removed for now
+                gui.Controls.Add(nameUVW);
+                gui.Controls.Add(U);
+                gui.Controls.Add(V);
+                gui.Controls.Add(W);
+                gui.Controls.Add(buttonRevertUVW);
+            }
+            if (!hasValue)
+            {
+                gui.Controls.Remove(value);
+                gui.Controls.Remove(buttonRevert);
+                //gui.Controls.Remove(buttonRemove); //removed for now
+                //gui.Controls.Add(buttonAdd);       //removed for now.
+                gui.Controls.Remove(nameUVW);
+                gui.Controls.Remove(U);
+                gui.Controls.Remove(V);
+                gui.Controls.Remove(W);
+                gui.Controls.Remove(buttonRevertUVW);
+            }
+        }
+        void ButtonAddPress(object o, EventArgs e)
+        {
+            if (materialEditor.materialSelector.SelectedIndex > -1)
+            {
+                materialEditor.matData[materialEditor.materialSelector.SelectedIndex].hasValue[index] = true;
+                Update(true);
+            }
+        }
+        void ButtonRemovePress(object o, EventArgs e)
+        {
+            if (materialEditor.materialSelector.SelectedIndex > -1)
+            {
+                materialEditor.matData[materialEditor.materialSelector.SelectedIndex].hasValue[index] = false;
+                Update(false);
+            }
+        }
+        void RevertButtonPress(object o, EventArgs e)
+        {
+            if (materialEditor.materialSelector.SelectedIndex > -1) value.Text = materialEditor.matData[materialEditor.materialSelector.SelectedIndex].pathStrings_original[index];
+        }
+        void PathUpdated(object o, EventArgs e)
+        {
+            if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].pathStrings[index] = value.Text;
+        }
+        void UUpdated(object o, EventArgs e)
+        {
+            if (U.Text != "")
+            {
+                float f;
+                if (!float.TryParse(U.Text, out f))
                 {
-                    if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.INT)
-                    {
-                        UInt32 q;
-                        if (!UInt32.TryParse(m.attribValues[i], out q)) q = 0;
-                        ugx.EncodeNameValueValueUInt(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
-                    }
-                    if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
-                    {
-                        float q;
-                        if (!float.TryParse(m.attribValues[i], out q)) q = 0;
-                        ugx.EncodeNameValueValueFloat(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
-                    }
+                    U.Text = "0";
+                    U.Select(1, 0);
                 }
-                m.attribValues_original[i] = m.attribValues[i];
+                U.Text = new string(U.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
+                if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].uStrings[index] = U.Text;
             }
         }
-    }
-    void ClearTextBoxes()
-    {
-        foreach (PathBox p in pathBoxes)
+        void VUpdated(object o, EventArgs e)
         {
-            p.value.Text = "";
-            p.Update(false);
-        }
-        foreach (AttribBox a in attribBoxes)
-        {
-            a.value.Text = "0";
-        }
-    }
-    void LockTextBoxes()
-    {
-        foreach (PathBox p in pathBoxes)
-        {
-            p.value.ReadOnly = true;
-            p.U.ReadOnly = true;
-            p.V.ReadOnly = true;
-            p.W.ReadOnly = true;
-        }
-        foreach (AttribBox a in attribBoxes)
-        {
-            a.value.ReadOnly = true;
-        }
-    }
-    void UnlockTextBoxes()
-    {
-        foreach (PathBox p in pathBoxes)
-        {
-            p.value.ReadOnly = false;
-            p.U.ReadOnly = false;
-            p.V.ReadOnly = false;
-            p.W.ReadOnly = false;
-        }
-        foreach (AttribBox a in attribBoxes)
-        {
-            a.value.ReadOnly = false;
-        }
-    }
-
-    private void swapSelectedButton_Click(object sender, EventArgs e)
-    {
-        if(fileLoaded && fbxLoaded)
-        {
-            if (fbxMeshList.SelectedIndex >= 0 && ugxMeshList.SelectedIndex >= 0)
+            if (V.Text != "")
             {
-                ugx.ReplaceMesh(ugx.fbx.meshes[fbxMeshList.SelectedIndex], ugxMeshList.SelectedIndex);
-                ugxMeshList.Items[ugxMeshList.SelectedIndex] = ugx.meshNames[ugxMeshList.SelectedIndex] + " (" + ugx.fbx.meshes[fbxMeshList.SelectedIndex].name + ")";
+                float f;
+                if (!float.TryParse(V.Text, out f))
+                {
+                    V.Text = "0";
+                    V.Select(1, 0);
+                }
+                V.Text = new string(V.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
+                if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].vStrings[index] = V.Text;
             }
         }
-    }
-
-    private void importFBXButton_Click(object sender, EventArgs e)
-    {
-        if (fbxFbd.ShowDialog() == DialogResult.OK)
+        void WUpdated(object o, EventArgs e)
         {
-            fbxMeshList.Items.Clear();
-            ugx.fbx = ugx.ImportAsset(fbxFbd.FileName);
-            for(int i = 0; i < ugx.fbx.meshes.Count; i++)
+            if (W.Text != "")
             {
-                fbxMeshList.Items.Add(ugx.fbx.meshes[i].name);
+                float f;
+                if (!float.TryParse(W.Text, out f))
+                {
+                    W.Text = "0";
+                    W.Select(1, 0);
+                }
+                W.Text = new string(W.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
+                if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].wStrings[index] = W.Text;
             }
-            fbxLoaded = true;
         }
-        else
+        void RevertPressedUVW(object o, EventArgs e)
         {
-            fbxMeshList.Items.Clear();
-            fbxLoaded = false;
+            if (materialEditor.materialSelector.SelectedIndex > -1)
+            {
+                U.Text = materialEditor.matData[materialEditor.materialSelector.SelectedIndex].uStrings_original[index];
+                V.Text = materialEditor.matData[materialEditor.materialSelector.SelectedIndex].vStrings_original[index];
+                W.Text = materialEditor.matData[materialEditor.materialSelector.SelectedIndex].wStrings_original[index];
+            }
         }
-    }
 
-    public void SetupMeshView()
-    {
-        for(int i = 0; i < ugx.subDataCount[0]; i++)
+        public void EnableView()
         {
-            ugxMeshList.Items.Add(ugx.meshNames[i]);
+            gui.Controls.Add(name);
         }
-    }
-}
-
-enum AttribType { FLOAT, UINT8, UINT16, UINT32 }
-class PathBox
-{
-    int index;
-    public PathBox(string nameStr, int offset)
-    {
-        index = offset;
-
-        int x = 20; //temp offset for when the remove and add buttons are disabled, to keep the path bars from having a gap.
-        int y = 30;
-        //gui.Controls.Add(value);
-        //gui.Controls.Add(name);
-        ////gui.Controls.Add(buttonAdd);
-        ////gui.Controls.Add(buttonRemove);
-        //gui.Controls.Add(buttonRevert);
-        //gui.Controls.Add(nameUVW);
-        //gui.Controls.Add(U);
-        //gui.Controls.Add(V);
-        //gui.Controls.Add(W);
-        //gui.Controls.Add(buttonRevertUVW);
-
-        name.BorderStyle = BorderStyle.None;
-        name.Location = new Point(160, 150 + y + (offset * 40));
-        name.Name = nameStr + "_name";
-        name.Size = new Size(100, 13);
-        name.TabIndex = offset;
-        name.Text = nameStr;
-
-        value.Location = new Point(160, 165 + y + (offset * 40));
-        value.Name = nameStr + "_value";
-        value.Size = new Size(433 + x - 120, 20);
-        value.TabIndex = offset + 1;
-        value.Anchor = AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
-        value.TextChanged += new EventHandler(PathUpdated);
-
-        buttonAdd.Location = new Point(160, 165 + y + (offset * 40));
-        buttonAdd.Size = new Size(20, 20);
-        buttonAdd.Text = "+";
-        buttonAdd.Click += new EventHandler(ButtonAddPress);
-        buttonAdd.Font = new Font("Microsoft Sans Serif", 10F);
-
-        buttonRemove.Location = new Point(616-120, 165 + y + (offset * 40));
-        buttonRemove.Size = new Size(20, 20);
-        buttonRemove.Text = "×";
-        buttonRemove.Click += new EventHandler(ButtonRemovePress);
-        buttonRemove.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        buttonRemove.Font = new Font("Microsoft Sans Serif", 10F);
-
-        buttonRevert.Location = new Point(595 - 120 + x, 165 + y + (offset * 40));
-        buttonRevert.Size = new Size(20, 20);
-        buttonRevert.Text = "↶";
-        buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
-        buttonRevert.Click += new EventHandler(RevertButtonPress);
-        buttonRevert.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-
-        nameUVW.BorderStyle = BorderStyle.None;
-        nameUVW.Location = new Point(595 - 95 + x, 150 + y + (offset * 40));
-        nameUVW.Name = nameStr + "_nameUVW";
-        nameUVW.Size = new Size(100, 13);
-        nameUVW.TabIndex = offset;
-        nameUVW.Text = "UVW Velocity";
-        nameUVW.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        U.Location = new Point(595 - 95 + x, 165 + y + (offset * 40));
-        U.Size = new Size(40, 20);
-        U.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        U.TextChanged += new EventHandler(UUpdated);
-        V.Location = new Point(595 - 56 + x, 165 + y + (offset * 40));
-        V.Size = new Size(40, 20);
-        V.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        V.TextChanged += new EventHandler(VUpdated);
-        W.Location = new Point(595 - 17 + x, 165 + y + (offset * 40));
-        W.Size = new Size(40, 20);
-        W.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        W.TextChanged += new EventHandler(WUpdated);
-        buttonRevertUVW.Location = new Point(595 + 25 + x, 165 + y + (offset * 40));
-        buttonRevertUVW.Size = new Size(20, 20);
-        buttonRevertUVW.Text = "↶";
-        buttonRevertUVW.Font = new Font("Microsoft Sans Serif", 10F);
-        buttonRevertUVW.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        buttonRevertUVW.Click += new EventHandler(RevertPressedUVW);
-
-        gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
-        gui.toolTips.SetToolTip(buttonRevertUVW, "Revert to default value.");
-        gui.toolTips.SetToolTip(buttonRemove, "Remove this texture map from this material.");
-        gui.toolTips.SetToolTip(buttonAdd, "Add a new texture map to this material.");
-
-        Update(false);
-    }
-    public void Update(bool hasValue)
-    {
-        if(hasValue)
-        {
-            gui.Controls.Add(value);
-            gui.Controls.Add(buttonRevert);
-            //gui.Controls.Add(buttonRemove); //removed for now
-            //gui.Controls.Remove(buttonAdd); //removed for now
-            gui.Controls.Add(nameUVW);
-            gui.Controls.Add(U);
-            gui.Controls.Add(V);
-            gui.Controls.Add(W);
-            gui.Controls.Add(buttonRevertUVW);
-        }
-        if (!hasValue)
+        public void DisableView()
         {
             gui.Controls.Remove(value);
+            gui.Controls.Remove(name);
+            gui.Controls.Remove(buttonAdd);
+            gui.Controls.Remove(buttonRemove);
             gui.Controls.Remove(buttonRevert);
-            //gui.Controls.Remove(buttonRemove); //removed for now
-            //gui.Controls.Add(buttonAdd);       //removed for now.
             gui.Controls.Remove(nameUVW);
             gui.Controls.Remove(U);
             gui.Controls.Remove(V);
             gui.Controls.Remove(W);
-            gui.Controls.Remove(buttonRevertUVW);
         }
+
+        public Label name = new Label();
+        public TextBox value = new TextBox();
+        Button buttonAdd = new Button();
+        Button buttonRemove = new Button();
+        Button buttonRevert = new Button();
+
+        Label nameUVW = new Label();
+        public TextBox U = new TextBox();
+        public TextBox V = new TextBox();
+        public TextBox W = new TextBox();
+        Button buttonRevertUVW = new Button();
     }
-    void ButtonAddPress(object o, EventArgs e)
+    class AttribBox
     {
-        if (gui.materialSelector.SelectedIndex > -1)
+        int index;
+        MaterialEditor materialEditor;
+        public AttribBox(string nameStr, int ind, int gridX, int gridY, AttribType type, MaterialEditor me)
         {
-            gui.matData[gui.materialSelector.SelectedIndex].hasValue[index] = true;
-            Update(true);
+            materialEditor = me;
+            index = ind;
+            t = type;
+
+            int ySpace = 40;
+            int xSpace = 67;
+
+            value.Location = new Point(gui.EditorToolsLeftMargin + (gridX * xSpace), 645 + (gridY * ySpace));
+            value.Name = nameStr + "_value";
+            value.Size = new Size(38, 20);
+            value.TabIndex = ind + 1;
+            value.TextChanged += new EventHandler(ValueUpdated);
+
+            buttonRevert.Location = new Point(value.Location.X + value.Width + 2, value.Location.Y);
+            buttonRevert.Size = new Size(20, 20);
+            buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
+            buttonRevert.Text = "↶";
+            buttonRevert.Click += new EventHandler(RevertButtonPress);
+
+            name.BorderStyle = BorderStyle.None;
+            name.Location = new Point(gui.EditorToolsLeftMargin + (gridX * xSpace) - 2, 632 + (gridY * ySpace));
+            name.Name = nameStr + "_name";
+            name.Size = new Size(buttonRevert.Width + 8 + value.Width, 13);
+            name.TabIndex = ind;
+            name.Text = nameStr;
+
+            gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
+            gui.toolTips.SetToolTip(name, name.Text);
         }
-    }
-    void ButtonRemovePress(object o, EventArgs e)
-    {
-        if (gui.materialSelector.SelectedIndex > -1)
+
+        void ValueUpdated(object o, EventArgs e)
         {
-            gui.matData[gui.materialSelector.SelectedIndex].hasValue[index] = false;
-            Update(false);
-        }
-    }
-    void RevertButtonPress(object o, EventArgs e)
-    {
-        if (gui.materialSelector.SelectedIndex > -1) value.Text = gui.matData[gui.materialSelector.SelectedIndex].pathStrings_original[index];
-    }
-    void PathUpdated(object o, EventArgs e)
-    {
-        if (gui.materialSelector.SelectedIndex > -1) gui.matData[gui.materialSelector.SelectedIndex].pathStrings[index] = value.Text;
-    }
-    void UUpdated(object o, EventArgs e)
-    {
-        if (U.Text != "")
-        {
-            float f;
-            if (!float.TryParse(U.Text, out f))
+            if (value.Text != "")
             {
-                U.Text = "0";
-                U.Select(1, 0);
-            }
-            U.Text = new string(U.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
-            if (gui.materialSelector.SelectedIndex > -1) gui.matData[gui.materialSelector.SelectedIndex].uStrings[index] = U.Text;
-        }
-    }
-    void VUpdated(object o, EventArgs e)
-    {
-        if (V.Text != "")
-        {
-            float f;
-            if (!float.TryParse(V.Text, out f))
-            {
-                V.Text = "0";
-                V.Select(1, 0);
-            }
-            V.Text = new string(V.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
-            if (gui.materialSelector.SelectedIndex > -1) gui.matData[gui.materialSelector.SelectedIndex].vStrings[index] = V.Text;
-        }
-    }
-    void WUpdated(object o, EventArgs e)
-    {
-        if (W.Text != "")
-        {
-            float f;
-            if (!float.TryParse(W.Text, out f))
-            {
-                W.Text = "0";
-                W.Select(1, 0);
-            }
-            W.Text = new string(W.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
-            if (gui.materialSelector.SelectedIndex > -1) gui.matData[gui.materialSelector.SelectedIndex].wStrings[index] = W.Text;
-        }
-    }
-    void RevertPressedUVW(object o, EventArgs e)
-    {
-        if (gui.materialSelector.SelectedIndex > -1)
-        {
-            U.Text = gui.matData[gui.materialSelector.SelectedIndex].uStrings_original[index];
-            V.Text = gui.matData[gui.materialSelector.SelectedIndex].vStrings_original[index];
-            W.Text = gui.matData[gui.materialSelector.SelectedIndex].wStrings_original[index];
-        }
-    }
-
-    public void EnableView()
-    {
-        gui.Controls.Add(name);
-        gui.Controls.Add(buttonRevert);
-        gui.Controls.Add(nameUVW);
-        gui.Controls.Add(buttonRevertUVW);
-    }
-    public void DisableView()
-    {
-        gui.Controls.Remove(value);
-        gui.Controls.Remove(name);
-        gui.Controls.Remove(buttonAdd);
-        gui.Controls.Remove(buttonRemove);
-        gui.Controls.Remove(buttonRevert);
-        gui.Controls.Remove(nameUVW);
-        gui.Controls.Remove(U);
-        gui.Controls.Remove(V);
-        gui.Controls.Remove(W);
-        gui.Controls.Remove(buttonRevertUVW);
-    }
-
-    public TextBox value = new TextBox();
-    Label name = new Label();
-    Button buttonAdd = new Button();
-    Button buttonRemove = new Button();
-    Button buttonRevert = new Button();
-
-    Label nameUVW = new Label();
-    public TextBox U = new TextBox();
-    public TextBox V = new TextBox();
-    public TextBox W = new TextBox();
-    Button buttonRevertUVW = new Button();
-}
-class AttribBox
-{
-    int index;
-    public AttribBox(string nameStr, int offset, AttribType type)
-    {
-        index = offset;
-        t = type;
-        int y = 31;
-
-        //gui.Controls.Add(name);
-        //gui.Controls.Add(value);
-        //gui.Controls.Add(buttonRevert);
-
-        name.BorderStyle = BorderStyle.None;
-        name.Location = new Point(15, 150 + y + (offset * 40));
-        name.Name = nameStr + "_name";
-        name.Size = new Size(100, 13);
-        name.TabIndex = offset;
-        name.Text = nameStr;
-
-        value.Location = new Point(15, 165 + y + (offset * 40));
-        value.Name = nameStr + "_value";
-        value.Size = new Size(100, 20);
-        value.TabIndex = offset + 1;
-        value.TextChanged += new EventHandler(ValueUpdated);
-
-        buttonRevert.Location = new Point(117, 165 + y + (offset * 40));
-        buttonRevert.Size = new Size(20, 20);
-        buttonRevert.Font = new Font("Microsoft Sans Serif", 10F);
-        buttonRevert.Text = "↶";
-        buttonRevert.Click += new EventHandler(RevertButtonPress);
-
-        gui.toolTips.SetToolTip(buttonRevert, "Revert to default value.");
-    }
-
-    void ValueUpdated(object o, EventArgs e)
-    {
-        if (value.Text != "")
-        {
-            if (t == AttribType.UINT8 || t == AttribType.UINT16 || t == AttribType.UINT32)
-            {
-                Int64 i;
-                if (!Int64.TryParse(value.Text, out i)) { value.Text = "0"; value.Select(1, 0); }
-                if (t == AttribType.UINT8)
+                if (t == AttribType.UINT8 || t == AttribType.UINT16 || t == AttribType.UINT32)
                 {
-                    if (i > 255) { value.Text = "255"; value.Select(3, 0); }
-                    if (i < 0) { value.Text = "0"; value.Select(1, 0); }
+                    Int64 i;
+                    if (!Int64.TryParse(value.Text, out i)) { value.Text = "0"; value.Select(1, 0); }
+                    if (t == AttribType.UINT8)
+                    {
+                        if (i > 255) { value.Text = "255"; value.Select(3, 0); }
+                        if (i < 0) { value.Text = "0"; value.Select(1, 0); }
+                    }
+                    if (t == AttribType.UINT16)
+                    {
+                        if (i > UInt16.MaxValue) { value.Text = UInt16.MaxValue.ToString(); value.Select(5, 0); }
+                        if (i < UInt16.MinValue) { value.Text = UInt16.MinValue.ToString(); value.Select(1, 0); }
+                    }
+                    if (t == AttribType.UINT32)
+                    {
+                        if (i > UInt32.MaxValue) { value.Text = UInt32.MaxValue.ToString(); value.Select(10, 0); }
+                        if (i < UInt32.MinValue) { value.Text = UInt32.MinValue.ToString(); value.Select(1, 0); }
+                    }
+                    value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9').ToArray());
                 }
-                if (t == AttribType.UINT16)
+                if (t == AttribType.FLOAT)
                 {
-                    if (i > UInt16.MaxValue) { value.Text = UInt16.MaxValue.ToString(); value.Select(5, 0); }
-                    if (i < UInt16.MinValue) { value.Text = UInt16.MinValue.ToString(); value.Select(1, 0); }
-                }
-                if (t == AttribType.UINT32)
-                {
-                    if (i > UInt32.MaxValue) { value.Text = UInt32.MaxValue.ToString(); value.Select(10, 0); }
-                    if (i < UInt32.MinValue) { value.Text = UInt32.MinValue.ToString(); value.Select(1, 0); }
-                }
-                value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9').ToArray());
-            }
-            if (t == AttribType.FLOAT)
-            {
-                float f;
-                if (!float.TryParse(value.Text, out f))
-                {
-                    value.Text = "0";
-                    value.Select(1, 0);
-                }
-                value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
+                    float f;
+                    if (!float.TryParse(value.Text, out f))
+                    {
+                        value.Text = "0";
+                        value.Select(1, 0);
+                    }
+                    value.Text = new string(value.Text.Where(c => c >= '0' && c <= '9' || c == '-' || c == '.').ToArray());
 
+                }
+                if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].attribValues[index] = value.Text;
             }
-            if (gui.materialSelector.SelectedIndex > -1) gui.matData[gui.materialSelector.SelectedIndex].attribValues[index] = value.Text;
+        }
+        void RevertButtonPress(object o, EventArgs e)
+        {
+            if (materialEditor.materialSelector.SelectedIndex > -1) value.Text = materialEditor.matData[materialEditor.materialSelector.SelectedIndex].attribValues_original[index];
+        }
+
+        public void EnableView()
+        {
+            gui.Controls.Add(value);
+            gui.Controls.Add(buttonRevert);
+            gui.Controls.Add(name);
+        }
+        public void DisableView()
+        {
+            gui.Controls.Remove(value);
+            gui.Controls.Remove(buttonRevert);
+            gui.Controls.Remove(name);
+        }
+
+        AttribType t;
+        public TextBox value = new TextBox();
+        Button buttonRevert = new Button();
+        Label name = new Label();
+
+    }
+    class MatData
+    {
+        public BDTNode linkedNode;
+        public TabPage tab = new TabPage();
+        public MatData(int index, MaterialEditor me)
+        {
+            me.materialSelector.Controls.Add(tab);
+            tab.Text = "Material " + (index + 1).ToString();
+        }
+
+        public bool[] hasValue = new bool[13];
+        public bool[] hasValue_original = new bool[13];
+        public string[] pathStrings = new string[13];
+        public string[] pathStrings_original = new string[13];
+        public string[] uStrings = new string[13];
+        public string[] vStrings = new string[13];
+        public string[] wStrings = new string[13];
+        public string[] uStrings_original = new string[13];
+        public string[] vStrings_original = new string[13];
+        public string[] wStrings_original = new string[13];
+        public string[] attribValues = new string[12];
+        public string[] attribValues_original = new string[12];
+
+    }
+
+    class EditorTab
+    {
+        protected TabPage tab = new TabPage();
+        public EditorTab()
+        {
+            gui.editorSelecter.Controls.Add(tab);
+        }
+
+        public virtual void Show()
+        {
+
+        }
+        public virtual void Hide()
+        {
+
         }
     }
-    void RevertButtonPress(object o, EventArgs e)
+    class MeshViewWindow
     {
-        if (gui.materialSelector.SelectedIndex > -1) value.Text = gui.matData[gui.materialSelector.SelectedIndex].attribValues_original[index];
+        private bool canEdit;
+        private OpenTK.GLControl window;
+        public MeshViewWindow(int xPos, int yPos, int width, int height, bool canBeEdited)
+        {
+            canEdit = canBeEdited;
+            window = new OpenTK.GLControl();
+            window.Location = new Point(xPos, yPos);
+            window.Size = new Size(width, height);
+            window.Paint += new PaintEventHandler(Paint);
+            gui.Controls.Add(window);
+        }
+        private void Paint(object o, EventArgs e)
+        {
+            window.MakeCurrent();
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            Draw();
+            window.SwapBuffers();
+        }
+        public virtual void Draw()
+        {
+
+        }
     }
 
-    public void EnableView()
+    class MeshEditor : EditorTab
     {
-        gui.Controls.Add(value);
-        gui.Controls.Add(buttonRevert);
-        gui.Controls.Add(name);
+        public TreeView ugxMeshTree = new TreeView();
+        public TreeView fbxMeshTree = new TreeView();
+
+        public MeshEditor() : base()
+        {
+            int xSpace = 10;
+            tab.Text = "Mesh Editor";
+
+            ugxMeshTree.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+            ugxMeshTree.Font = new Font("Microsoft Sans Serif", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            ugxMeshTree.ItemHeight = 15;
+            ugxMeshTree.Location = new Point(gui.EditorToolsLeftMargin, 118);
+            ugxMeshTree.Name = "ugxMeshList";
+            ugxMeshTree.Size = new Size((gui.EditorToolSideWindowWidth / 2) - (xSpace), 500);
+            ugxMeshTree.TabIndex = 11;
+
+            fbxMeshTree.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+            fbxMeshTree.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            fbxMeshTree.ItemHeight = 15;
+            fbxMeshTree.Location = new Point(gui.EditorToolsLeftMargin + (gui.EditorToolSideWindowWidth / 2) + (xSpace), 118);
+            fbxMeshTree.Name = "fbxMeshList";
+            fbxMeshTree.Size = new Size((gui.EditorToolSideWindowWidth / 2) - (xSpace), 500);
+            fbxMeshTree.TabIndex = 13;
+        }
+        public override void Show()
+        {
+            gui.Controls.Add(ugxMeshTree);
+            gui.Controls.Add(fbxMeshTree);
+        }
+        public override void Hide()
+        {
+            gui.Controls.Remove(ugxMeshTree);
+            gui.Controls.Remove(fbxMeshTree);
+        }
+        public void SetupMeshView()
+        {
+            TreeNode n = ugxMeshTree.Nodes.Add(ugx.fileName);
+            for (int i = 0; i < ugx.subDataCount[0]; i++)
+            {
+                n.Nodes.Add(ugx.meshNames[i]);
+            }
+            ugxMeshTree.ExpandAll();
+        }
+
     }
-    public void DisableView()
+    class MaterialEditor : EditorTab
     {
-        gui.Controls.Remove(value);
-        gui.Controls.Remove(buttonRevert);
-        gui.Controls.Remove(name);
+
+        public TabControl materialSelector = new TabControl();
+
+        AttribBox[] attribBoxes = new AttribBox[12];
+        PathBox[] pathBoxes = new PathBox[13];
+        public List<MatData> matData = new List<MatData>();
+
+        public MaterialEditor() : base()
+        {
+            tab.Text = "Material Editor";
+
+            this.materialSelector.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            this.materialSelector.Location = new Point(gui.EditorToolsLeftMargin, 50);
+            this.materialSelector.Name = "materialSelector";
+            this.materialSelector.SelectedIndex = -1;
+            this.materialSelector.Size = new Size(gui.EditorToolSideWindowWidth, 23);
+            this.materialSelector.SelectedIndexChanged += new EventHandler(SelectedMaterialChanged);
+            materialSelector.SelectedIndex = 100;
+            materialSelector.SelectedIndex = 0;
+            for (int i = 0; i < 12; i++)
+            {
+                if (i == 0) attribBoxes[i] = new AttribBox("SpecPower", i, 0, 0, AttribType.FLOAT, this);
+                if (i == 1) attribBoxes[i] = new AttribBox("SpecColorR", i, 1, 0, AttribType.FLOAT, this);
+                if (i == 2) attribBoxes[i] = new AttribBox("SpecColorG", i, 2, 0, AttribType.FLOAT, this);
+                if (i == 3) attribBoxes[i] = new AttribBox("SpecColorB", i, 3, 0, AttribType.FLOAT, this);
+                if (i == 4) attribBoxes[i] = new AttribBox("Reflectivity", i, 4, 0, AttribType.FLOAT, this);
+                if (i == 5) attribBoxes[i] = new AttribBox("Sharpness", i, 5, 0, AttribType.FLOAT, this);
+                if (i == 6) attribBoxes[i] = new AttribBox("Fresnel", i, 0, 1, AttribType.FLOAT, this);
+                if (i == 7) attribBoxes[i] = new AttribBox("FresnelPwr", i, 1, 1, AttribType.FLOAT, this);
+                if (i == 8) attribBoxes[i] = new AttribBox("AccIndex", i, 2, 1, AttribType.UINT32, this);
+                if (i == 9) attribBoxes[i] = new AttribBox("Flags", i, 3, 1, AttribType.UINT32, this);
+                if (i == 10) attribBoxes[i] = new AttribBox("BlendType", i, 4, 1, AttribType.UINT8, this);
+                if (i == 11) attribBoxes[i] = new AttribBox("Opacity", i, 5, 1, AttribType.UINT8, this);
+            }
+            for (int i = 0; i < 13; i++)
+            {
+                if (i == 0) pathBoxes[i] = new PathBox("Diffuse", i, this);
+                if (i == 1) pathBoxes[i] = new PathBox("Normal", i, this);
+                if (i == 2) pathBoxes[i] = new PathBox("Gloss", i, this);
+                if (i == 3) pathBoxes[i] = new PathBox("Opacity", i, this);
+                if (i == 4) pathBoxes[i] = new PathBox("Xform", i, this);
+                if (i == 5) pathBoxes[i] = new PathBox("Emmissive", i, this);
+                if (i == 6) pathBoxes[i] = new PathBox("Ao", i, this);
+                if (i == 7) pathBoxes[i] = new PathBox("Env", i, this);
+                if (i == 8) pathBoxes[i] = new PathBox("EnvMask", i, this);
+                if (i == 9) pathBoxes[i] = new PathBox("EmXform", i, this);
+                if (i == 10) pathBoxes[i] = new PathBox("Distortion", i, this);
+                if (i == 11) pathBoxes[i] = new PathBox("Highlight", i, this);
+                if (i == 12) pathBoxes[i] = new PathBox("Modulate", i, this);
+            }
+
+            materialSelector.SelectedIndex = 1;
+            materialSelector.SelectedIndex = 0;
+        }
+        public override void Show()
+        {
+            gui.Controls.Add(materialSelector);
+            foreach (PathBox b in pathBoxes)
+            {
+                b.EnableView();
+            }
+            foreach (AttribBox a in attribBoxes)
+            {
+                a.EnableView();
+            }
+        }
+        public override void Hide()
+        {
+            gui.Controls.Remove(materialSelector);
+            foreach (PathBox b in pathBoxes)
+            {
+                b.DisableView();
+            }
+            foreach (AttribBox a in attribBoxes)
+            {
+                a.DisableView();
+            }
+        }
+
+        private void SelectedMaterialChanged(object o, EventArgs e)
+        {
+            if (materialSelector.SelectedIndex >= 0)
+            {
+                MatData m = matData[materialSelector.SelectedIndex];
+                for (int i = 0; i < 13; i++)
+                {
+                    pathBoxes[i].Update(m.hasValue[i]);
+                    pathBoxes[i].value.Text = m.pathStrings[i];
+                    pathBoxes[i].U.Text = m.uStrings[i];
+                    pathBoxes[i].V.Text = m.vStrings[i];
+                    pathBoxes[i].W.Text = m.wStrings[i];
+                    if (i < 12) attribBoxes[i].value.Text = m.attribValues[i];
+                    pathBoxes[i].Update(m.hasValue[i]);
+                }
+            }
+        }
+
+        public void SetupPathView()
+        {
+            for (int num = 0; num < ugx.nodes[0].childNodes.Count; num++)
+            {
+                MatData d = new MatData(num, this);
+                d.linkedNode = ugx.nodes[0].childNodes[num];
+                for (int i = 0; i < 13; i++)
+                {
+                    if (ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes.Count == 1)
+                    {
+                        d.pathStrings[i] = (string)ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].childNodes[0].attributeNameValues[0].decodedValue;
+                        d.uStrings[i] = ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[0].ToString();
+                        d.vStrings[i] = ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[1].ToString();
+                        d.wStrings[i] = ugx.nodes[0].childNodes[num].childNodes[1].childNodes[i].attributeNameValues[0].f[2].ToString();
+                        d.hasValue[i] = true;
+                    }
+                    else
+                    {
+                        d.pathStrings[i] = "";
+                        d.uStrings[i] = "0";
+                        d.vStrings[i] = "0";
+                        d.wStrings[i] = "0";
+                        d.hasValue[i] = false;
+                    }
+                    d.pathStrings_original[i] = d.pathStrings[i];
+                    d.hasValue_original[i] = d.hasValue[i];
+                    d.uStrings_original[i] = d.uStrings[i];
+                    d.vStrings_original[i] = d.vStrings[i];
+                    d.wStrings_original[i] = d.wStrings[i];
+
+                }
+
+
+                for (int i = 0; i < 12; i++)
+                {
+                    if (ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue != null)
+                    {
+                        //if (i < 8) d.attribValues[i] = string.Format("{0:F1}", ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue);
+                        d.attribValues[i] = ugx.nodes[0].childNodes[num].childNodes[0].childNodes[i].nodeNameValue.decodedValue.ToString();
+                    }
+                    d.attribValues_original[i] = d.attribValues[i];
+                }
+                matData.Add(d);
+            }
+            gui.LogOut("Found " + matData.Count + " materials.");
+        }
+        public void SaveMaterial()
+        {
+            foreach (MatData m in matData)
+            {
+                for (int i = 0; i < 13; i++)
+                {
+                    if (m.hasValue[i])
+                    {
+                        if (m.pathStrings[i] != m.pathStrings_original[i])
+                        {
+                            ugx.EncodeNameValueValueString(m.linkedNode.childNodes[1].childNodes[i].childNodes[0].nameValueIndex + 1, m.pathStrings[i]);
+                        }
+                        if (m.uStrings[i] != m.uStrings_original[i] || m.vStrings[i] != m.vStrings_original[i] || m.wStrings[i] != m.wStrings_original[i])
+                        {
+                            float q, w, e;
+                            float.TryParse(m.uStrings[i], out q); float.TryParse(m.vStrings[i], out w); float.TryParse(m.wStrings[i], out e);
+                            ugx.EncodeUVWVelocity(m.linkedNode.childNodes[1].childNodes[i].nameValueIndex + 1, q, w, e);
+                        }
+                    }
+                    m.pathStrings_original[i] = m.pathStrings[i];
+                    m.uStrings_original[i] = m.uStrings[i];
+                    m.vStrings_original[i] = m.vStrings[i];
+                    m.wStrings_original[i] = m.wStrings[i];
+                }
+                for (int i = 0; i < 12; i++)
+                {
+                    if (m.attribValues[i] != m.attribValues_original[i])
+                    {
+                        if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.INT)
+                        {
+                            UInt32 q;
+                            if (!UInt32.TryParse(m.attribValues[i], out q)) q = 0;
+                            ugx.EncodeNameValueValueUInt(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
+                        }
+                        if (m.linkedNode.childNodes[0].childNodes[i].nodeNameValue.decodedValueType == NameValueFlags_Type.FLOAT)
+                        {
+                            float q;
+                            if (!float.TryParse(m.attribValues[i], out q)) q = 0;
+                            ugx.EncodeNameValueValueFloat(m.linkedNode.childNodes[0].childNodes[i].nameValueIndex, q);
+                        }
+                    }
+                    m.attribValues_original[i] = m.attribValues[i];
+                }
+            }
+        }
+        public void ClearTextBoxes()
+        {
+            foreach (PathBox p in pathBoxes)
+            {
+                p.value.Text = "";
+                p.Update(false);
+            }
+            foreach (AttribBox a in attribBoxes)
+            {
+                a.value.Text = "0";
+            }
+        }
+        public void Unload()
+        {
+            foreach(MatData m in matData)
+            {
+                materialSelector.Controls.Remove(m.tab);
+            }
+            matData.Clear();
+        }
     }
-
-    AttribType t;
-    public TextBox value = new TextBox();
-    Button buttonRevert = new Button();
-    Label name = new Label();
-
-}
-class MatData
-{
-    public BDTNode linkedNode;
-    public TabPage tab = new TabPage();
-    public MatData(int index)
-    {
-        gui.materialSelector.Controls.Add(tab);
-        tab.Text = "Material " + (index + 1).ToString();
-    }
-
-    public bool  [] hasValue              = new bool  [13];
-    public bool  [] hasValue_original     = new bool  [13];
-    public string[] pathStrings           = new string[13];
-    public string[] pathStrings_original  = new string[13];
-    public string[] uStrings              = new string[13];
-    public string[] vStrings              = new string[13];
-    public string[] wStrings              = new string[13];
-    public string[] uStrings_original     = new string[13];
-    public string[] vStrings_original     = new string[13];
-    public string[] wStrings_original     = new string[13];
-    public string[] attribValues          = new string[12];
-    public string[] attribValues_original = new string[12];
-
 }
