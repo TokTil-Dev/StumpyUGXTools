@@ -296,7 +296,6 @@ namespace StumpyUGXTools
             meshEditorTab = new MeshEditor();
             materialEditorTab = new MaterialEditor();
             _3dEditor = new Editor();
-            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
         }
         void EditorSelect(object o, EventArgs e)
         {
