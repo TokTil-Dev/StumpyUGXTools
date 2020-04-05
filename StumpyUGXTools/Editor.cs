@@ -106,7 +106,6 @@ void main()
             #endregion
 
             gui.Controls.Add(viewport);
-            m = gui.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\backpack.fbx");
             mes = new OGLMesh(m.meshes[0]);
         }
 

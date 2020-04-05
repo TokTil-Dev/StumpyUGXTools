@@ -315,6 +315,7 @@ namespace StumpyUGXTools
         bool ugxLoaded = false;
         int DoUGXLoad(string path)
         {
+            Console.WriteLine(File.Exists("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\jo"));
             if (File.Exists(path))
             {
                 if (ugx.Load(path) == -1)
