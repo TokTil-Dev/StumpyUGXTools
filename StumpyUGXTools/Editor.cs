@@ -1,5 +1,6 @@
 ﻿using OpenTK;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Input;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -15,10 +16,18 @@ namespace StumpyUGXTools
     class Editor {
 
         private OpenTK.GLControl viewport;
+        Timer viewportRenderTimer;
+        Timer viewportUpdateTimer;
         OGLCamera camera = new OGLCamera();
+
         Model ugxModel;
         List<Model> imports = new List<Model>();
         List<TreeNode> rootNodes = new List<TreeNode>();
+
+        //temp
+        Model m;
+        OGLMesh mes;
+
         public void FBXImportPrompt()
         {
             if (gui.fbd.ShowDialog() == DialogResult.OK)
@@ -28,7 +37,9 @@ namespace StumpyUGXTools
                     gui.LogOut("File selected was not an fbx.");
                     return;
                 }
-                
+
+                gui.materialEditorTab.Unload();
+
                 Model m = gui.ImportAsset(gui.fbd.FileName);
                 TreeNode root = new TreeNode(Path.GetFileNameWithoutExtension(gui.fbd.FileName));
                 foreach (Model.Mesh mesh in m.meshes) { root.Nodes.Add(mesh.name); }
@@ -38,27 +49,41 @@ namespace StumpyUGXTools
             }
         }
 
-        Model m;
-        OGLMesh mes;
-
         public int shaderProgram;
         public void InitViewport()
         {
-
             ugxModel = ugx.GetModel();
 
             viewport = new OpenTK.GLControl();
             viewport.Location = new Point((gui.EditorToolsLeftMargin * 2) + gui.EditorToolSideWindowWidth, 44);
             viewport.Size = new Size(gui.Width - 50 - gui.EditorToolSideWindowWidth, gui.Height - 95);
-            viewport.Paint += new PaintEventHandler(viewport_Paint);
             viewport.KeyDown += new KeyEventHandler(viewport_KeyDown);
-            //viewport.KeyUp += new KeyEventHandler(viewport_KeyUp);
+            viewport.KeyUp += new KeyEventHandler(viewport_KeyUp);
+            viewport.LostFocus += new EventHandler(viewport_LostFocus);
             viewport.MakeCurrent();
 
-            #region Init OpenGL
-            int vao = GL.GenVertexArray();
-            GL.BindVertexArray(vao);
+            InitOGL();
+            viewport.SwapBuffers();
+            InitViewportInput();
 
+            //temp
+            m = gui.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\backpack.fbx");
+            mes = new OGLMesh(m.meshes[0]);
+
+            gui.Controls.Add(viewport);
+
+            viewportUpdateTimer = new Timer();
+            viewportUpdateTimer.Tick += new EventHandler(viewport_Update);
+            viewportUpdateTimer.Interval = 10;
+            viewportUpdateTimer.Start();
+
+            viewportRenderTimer = new Timer();
+            viewportRenderTimer.Tick += new EventHandler(viewport_Paint);
+            viewportRenderTimer.Interval = 10;
+            viewportRenderTimer.Start();
+        }
+        public void InitOGL()
+        {
             #region Shader Strings
             string vs =
     @"#version 330 core
@@ -68,7 +93,7 @@ uniform mat4 viewMatrix;
 
 void main()
 {
-    gl_Position = viewMatrix * vec4(aPosition, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * vec4(aPosition, 1.0);
 }";
             string fs =
     @"#version 330 core
@@ -80,6 +105,10 @@ void main()
 }";
             #endregion
 
+            #region Init OpenGL
+            int vao = GL.GenVertexArray();
+            GL.BindVertexArray(vao);
+            
             int vertS, fragS;
             vertS = GL.CreateShader(ShaderType.VertexShader);
             GL.ShaderSource(vertS, vs);
@@ -100,37 +129,70 @@ void main()
             GL.UseProgram(shaderProgram);
 
             int loc = GL.GetUniformLocation(shaderProgram, "projectionMatrix");
-            Matrix4 proj = Matrix4.CreatePerspectiveFieldOfView(1.223f, gui.Width / gui.Height, .01f, 1000f);
+            Matrix4 proj = Matrix4.CreatePerspectiveFieldOfView(1.523f, gui.Width / gui.Height, .01f, 250f);
             GL.UniformMatrix4(loc, false, ref proj);
             Console.WriteLine(loc);
             #endregion
-
-            gui.Controls.Add(viewport);
-            mes = new OGLMesh(m.meshes[0]);
         }
 
-
-        //WinForm consumables
+        //viewport functions
         void viewport_Paint(object o, EventArgs e)
         {
-            viewport.MakeCurrent();
             GL.ClearColor(.3f, .3f, .3f, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            mes.Draw();
+            viewport_Draw();
             viewport.SwapBuffers();
+        }
+        void viewport_Draw()
+        {
+            camera.UpdateCamera();
+            mes.Draw();
+        }
+
+        void viewport_Update(object o, EventArgs e)
+        {
+            if (keys[KeyName.forward].isPressed)  camera.Translate(0, 0, .0025f);
+            if (keys[KeyName.backward].isPressed) camera.Translate(0, 0, -.0025f);
+            if (keys[KeyName.left].isPressed)     camera.Translate(-.0025f, 0, 0);
+            if (keys[KeyName.right].isPressed)    camera.Translate(.0025f, 0, 0);
+        }
+
+        void viewport_LostFocus(object o, EventArgs e)
+        {
+            foreach(InputKey k in keys.Values)
+            {
+                k.isPressed = false;
+            }
+        }
+
+        //input
+        enum KeyName { forward,backward,left,right,up,down }
+        Dictionary<KeyName, InputKey> keys;
+        void InitViewportInput()
+        {
+            keys = new Dictionary<KeyName, InputKey>
+            {
+                {KeyName.forward,   new InputKey(Keys.W) },
+                {KeyName.backward,  new InputKey(Keys.S) },
+                {KeyName.left,      new InputKey(Keys.A) },
+                {KeyName.right,     new InputKey(Keys.D) },
+                {KeyName.up,        new InputKey(Keys.Space) },
+                {KeyName.down,      new InputKey(Keys.LShiftKey) }
+            };
         }
         void viewport_KeyDown(object o, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.W)
+            foreach(InputKey k in keys.Values)
             {
-                camera.position.Z += .025f;
+                k.PollKeyDown(e);
             }
-            if (e.KeyCode == Keys.S)
+        }
+        void viewport_KeyUp(object o, KeyEventArgs e)
+        {
+            foreach (InputKey k in keys.Values)
             {
-                camera.position.Z -= .025f;
+                k.PollKeyUp(e);
             }
-            camera.UpdateCamera();
-            viewport.Invalidate();
         }
     }
 
@@ -138,8 +200,16 @@ void main()
     class ViewportObject
     {
         public Vector3 position = Vector3.Zero;
-        public Vector3 rotation = Vector3.Zero;
+        public Quaternion rotation = Quaternion.Identity;
         public Vector3 scale = Vector3.One;
+        public void Rotate(float yaw, float pitch, float roll)
+        {
+            rotation *= Quaternion.FromEulerAngles(pitch, yaw, roll);
+        }
+        public void Translate(float x, float y, float z)
+        {
+            position += new Vector3(x, y, z);
+        }
     }
     class OGLCamera : ViewportObject
     {
@@ -152,7 +222,7 @@ void main()
         public void UpdateCamera()
         {
             Console.WriteLine(position);
-            Matrix4 m = Matrix4.LookAt(position, position + new Vector3(0, 0, 1), new Vector3(0, 1, 0));
+            Matrix4 m = Matrix4.LookAt(position, position + new Vector3(0, 0, 1), new Vector3(0, 1, 0)) * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
             int loc = GL.GetUniformLocation(gui._3dEditor.shaderProgram, "viewMatrix");
             GL.UniformMatrix4(loc, false, ref m);
@@ -227,6 +297,32 @@ void main()
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
         }
+    }
+
+    class InputKey
+    {
+        Keys k;
+        public bool isPressed;
+        public InputKey(Keys key)
+        {
+            k = key;
+        }
+        public void PollKeyDown(KeyEventArgs e)
+        {
+            if (k == e.KeyCode) 
+            {
+                isPressed = true;
+            }
+        }
+        public void PollKeyUp(KeyEventArgs e)
+        {
+            if (k == e.KeyCode) isPressed = false;
+        }
+        public void UpdateKeyBinding(Keys newKey)
+        {
+            k = newKey;
+        }
+
     }
     #endregion
 }

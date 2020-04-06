@@ -33,6 +33,8 @@ namespace StumpyUGXTools
         private ToolStripMenuItem saveAsToolStripMenuItem;
         private ToolStripMenuItem importToolStripMenuItem;
         private ToolStripMenuItem fBXToolStripMenuItem;
+        private ToolStripMenuItem helpToolStripMenuItem;
+        private ToolStripMenuItem keyBindingsToolStripMenuItem;
         private ToolStripMenuItem saveToolStripMenuItem;
 
         public void InitializeComponent()
@@ -50,6 +52,8 @@ namespace StumpyUGXTools
             this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fBXToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.keyBindingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -78,7 +82,8 @@ namespace StumpyUGXTools
             // menuStrip
             // 
             this.menuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.fileToolStripMenuItem});
+            this.fileToolStripMenuItem,
+            this.helpToolStripMenuItem});
             this.menuStrip.Location = new System.Drawing.Point(0, 0);
             this.menuStrip.Name = "menuStrip";
             this.menuStrip.Size = new System.Drawing.Size(1450, 24);
@@ -127,9 +132,23 @@ namespace StumpyUGXTools
             // fBXToolStripMenuItem
             // 
             this.fBXToolStripMenuItem.Name = "fBXToolStripMenuItem";
-            this.fBXToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.fBXToolStripMenuItem.Size = new System.Drawing.Size(94, 22);
             this.fBXToolStripMenuItem.Text = "FBX";
             this.fBXToolStripMenuItem.Click += new System.EventHandler(this.fBXToolStripMenuItem_Click);
+            // 
+            // helpToolStripMenuItem
+            // 
+            this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.keyBindingsToolStripMenuItem});
+            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
+            this.helpToolStripMenuItem.Text = "Help";
+            // 
+            // keyBindingsToolStripMenuItem
+            // 
+            this.keyBindingsToolStripMenuItem.Name = "keyBindingsToolStripMenuItem";
+            this.keyBindingsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.keyBindingsToolStripMenuItem.Text = "Key Bindings";
             // 
             // GUI
             // 
@@ -296,6 +315,7 @@ namespace StumpyUGXTools
             meshEditorTab = new MeshEditor();
             materialEditorTab = new MaterialEditor();
             _3dEditor = new Editor();
+            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
         }
         void EditorSelect(object o, EventArgs e)
         {
@@ -315,7 +335,6 @@ namespace StumpyUGXTools
         bool ugxLoaded = false;
         int DoUGXLoad(string path)
         {
-            Console.WriteLine(File.Exists("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\jo"));
             if (File.Exists(path))
             {
                 if (ugx.Load(path) == -1)
