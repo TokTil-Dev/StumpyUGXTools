@@ -15,11 +15,13 @@ using OpenTK;
 using Quaternion = OpenTK.Quaternion;
 using OpenTK.Input;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace StumpyUGXTools
 {
     class GUI : Form
     {
+
         public int EditorToolSideWindowWidth;
         public int EditorToolsLeftMargin;
         public OpenFileDialog fbd;
@@ -183,89 +185,6 @@ namespace StumpyUGXTools
             //    logBox.Text = s + " (" + numRepeated + ")";
             //}
         }
-
-        #region Old
-        //private void buttonFind_Click(object sender, EventArgs e)
-        //{
-
-        //}
-        //private void GUI_Load(object sender, EventArgs e)
-        //{
-
-        //}
-        //private void tabControl_SelectedIndexChanged(object sender, EventArgs e)
-        //{
-        //    if (materialSelector.SelectedIndex >= 0)
-        //    {
-        //        MatData m = matData[materialSelector.SelectedIndex];
-        //        for (int i = 0; i < 13; i++)
-        //        {
-        //            pathBoxes[i].Update(m.hasValue[i]);
-        //            pathBoxes[i].value.Text = m.pathStrings[i];
-        //            pathBoxes[i].U.Text = m.uStrings[i];
-        //            pathBoxes[i].V.Text = m.vStrings[i];
-        //            pathBoxes[i].W.Text = m.wStrings[i];
-        //            if (i < 12) attribBoxes[i].value.Text = m.attribValues[i];
-        //        }
-        //    }
-        //}
-        //private void editorSelecter_SelectedIndexChanged(object o, EventArgs e)
-        //{
-        //    if(editorSelecter.SelectedIndex == 0)
-        //    {
-        //        SwapView(SelectedView.Mesh);
-        //    }
-        //    if(editorSelecter.SelectedIndex == 1)
-        //    {
-        //        SwapView(SelectedView.Material);
-        //        int sel = materialSelector.SelectedIndex;
-        //        materialSelector.SelectedIndex = -1;
-        //        materialSelector.SelectedIndex = sel;
-        //    }
-        //}
-        //private void swapSelectedButton_Click(object sender, EventArgs e)
-        //{
-        //    if (fileLoaded && fbxLoaded)
-        //    {
-        //        if (fbxMeshList.SelectedIndex >= 0 && ugxMeshList.SelectedIndex >= 0)
-        //        {
-        //            ugx.ReplaceMesh(ugx.fbx.meshes[fbxMeshList.SelectedIndex], ugxMeshList.SelectedIndex);
-        //            ugxMeshList.Items[ugxMeshList.SelectedIndex] = ugx.meshNames[ugxMeshList.SelectedIndex] + " (" + ugx.fbx.meshes[fbxMeshList.SelectedIndex].name + ")";
-        //        }
-        //    }
-        //}
-        //private void glControl1_Paint(object sender, EventArgs e)
-        //{
-        //    GL.Clear(ClearBufferMask.ColorBufferBit);
-        //    viewWindow.SwapBuffers();
-        //}
-        //private void openUGXToolStripMenuItem_Click(object sender, EventArgs e)
-        //{
-        //    if (fbd.ShowDialog() == DialogResult.OK)
-        //    {
-        //        DoUI();
-        //    }
-        //}
-        //private void importFBXButton_Click(object sender, EventArgs e)
-        //{
-        //    if (fbxFbd.ShowDialog() == DialogResult.OK)
-        //    {
-        //        fbxMeshList.Items.Clear();
-        //        ugx.fbx = ugx.ImportAsset(fbxFbd.FileName);
-        //        for (int i = 0; i < ugx.fbx.meshes.Count; i++)
-        //        {
-        //            fbxMeshList.Items.Add(ugx.fbx.meshes[i].name);
-        //        }
-        //        fbxLoaded = true;
-        //    }
-        //    else
-        //    {
-        //        fbxMeshList.Items.Clear();
-        //        fbxLoaded = false;
-        //    }
-        //}
-        #endregion
-
 
         public Editor _3dEditor;
         public MeshEditor meshEditorTab;
@@ -436,12 +355,12 @@ namespace StumpyUGXTools
         {
             _3dEditor.FBXImportPrompt();
         }
-        #endregion
-
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DoUGXSave();
         }
+        #endregion
+
     }
 
 
