@@ -8,6 +8,8 @@ using Assimp;
 using MiscUtil.Conversion;
 using CRC;
 using static Program;
+using static StumpyUGXTools.Editor;
+using Mesh = StumpyUGXTools.Editor.Mesh;
 
 namespace StumpyUGXTools
 {
@@ -87,32 +89,6 @@ namespace StumpyUGXTools
 
         public float[] f; //dirty hack
     }
-    public struct Model
-    {
-        public struct Mesh
-        {
-            public struct Vertex
-            {
-                public Half vx, vy, vz,
-                             tu, tv;
-                public float nx, ny, nz;
-                public byte b1, b2, b3, b4,
-                             w1, w2, w3, w4;
-            }
-
-            public List<Vertex> vertices;
-            public List<int> indices;
-            public int
-                materialID,
-                boneID,
-                vertexSize,
-                faceCount;
-            public bool isSkinned;
-            public string name;
-        }
-        public List<Mesh> meshes;
-    }
-
 
     class UGXFile
     {
@@ -134,6 +110,7 @@ namespace StumpyUGXTools
         {
             if (!File.Exists(path)) return -1;
             List<byte> fileData = File.ReadAllBytes(path).ToList<byte>();
+            Console.WriteLine(bec.ToUInt32(fileData.GetRange(0, 4).ToArray(), 0));
             if (bec.ToUInt32(fileData.GetRange(0, 4).ToArray(), 0) != 3669653303) { fileData.Clear(); return -1; }
 
             //get chunk locations
@@ -359,11 +336,6 @@ namespace StumpyUGXTools
         public long[] subDataCount = new long[6];
         public long[] subDataOffset = new long[6];
         public string[] meshNames;
-        
-        public Model GetModel()
-        {
-            return new Model();
-        }
 
         public void InitMeshEditing()
         {
@@ -389,7 +361,7 @@ namespace StumpyUGXTools
                 }
             }
         }
-        public int ReplaceMesh(Model.Mesh mesh, int meshIndexToReplace)
+        public int ReplaceMesh(Mesh mesh, int meshIndexToReplace)
         {
             if (meshIndexToReplace >= subDataCount[0]) return -1;
 
@@ -408,15 +380,15 @@ namespace StumpyUGXTools
             {
                 for (int i = 0; i < mesh.vertices.Count; i++)
                 {
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].vx));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].vy));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].vz));
+                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].x));
+                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].y));
+                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].z));
                     v.AddRange(SystemHalf.Half.GetBytes(1));
                     v.AddRange(BitConverter.GetBytes(mesh.vertices[i].nx));
                     v.AddRange(BitConverter.GetBytes(mesh.vertices[i].ny));
                     v.AddRange(BitConverter.GetBytes(mesh.vertices[i].nz));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].tu));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].tv));
+                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].u));
+                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].v));
                 }
             }
             vbData.AddRange(v);

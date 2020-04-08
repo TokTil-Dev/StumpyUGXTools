@@ -12,17 +12,15 @@ using StumpyUGXTools;
 static class Program
 {
     public static string version = "0.5.1";
-
-    public static UGXFile ugx = new UGXFile();
-    public static GUI gui = new GUI();
+    public static Editor editor = new Editor();
 
     [STAThread]
     static void Main()
     {
         Application.EnableVisualStyles();
-        gui.InitializeComponent();
-        gui.version.Text = version;
-        Application.Run(gui);
+        editor.InitializeComponent();
+        editor.version.Text = version;
+        Application.Run(editor);
     }
 }
 
