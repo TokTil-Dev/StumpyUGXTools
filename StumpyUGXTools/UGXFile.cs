@@ -110,7 +110,6 @@ namespace StumpyUGXTools
         {
             if (!File.Exists(path)) return -1;
             List<byte> fileData = File.ReadAllBytes(path).ToList<byte>();
-            Console.WriteLine(bec.ToUInt32(fileData.GetRange(0, 4).ToArray(), 0));
             if (bec.ToUInt32(fileData.GetRange(0, 4).ToArray(), 0) != 3669653303) { fileData.Clear(); return -1; }
 
             //get chunk locations
@@ -128,6 +127,7 @@ namespace StumpyUGXTools
             ibData = fileData.GetRange(ibData_loc, bec.ToInt32(fileData.ToArray(), 116));
             matData = fileData.GetRange(matData_loc, bec.ToInt32(fileData.ToArray(), 140));
 
+            //get mesh info
             for (int i = 0; i < 6; i++)
             {
                 subDataCount[i] = BitConverter.ToInt64(cachedData.GetRange(64 + (16 * i), 8).ToArray(), 0);

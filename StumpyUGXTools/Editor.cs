@@ -17,6 +17,7 @@ using OpenTK.Input;
 using Examples.TextureLoaders;
 using System.Runtime.InteropServices;
 using Timer = System.Windows.Forms.Timer;
+using System.Reflection;
 
 namespace StumpyUGXTools
 {
@@ -214,10 +215,11 @@ namespace StumpyUGXTools
 
         List<Mesh> imports = new List<Mesh>();
         List<uint> materialDiffuseTextures = new List<uint>();
+        uint nullTexture;
 
         string textureReferencePath = "F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art";
 
-        //UI
+        // UI //
         enum SelectedView { Null, Mesh, Material }
         void SwapView(SelectedView v)
         {
@@ -276,7 +278,7 @@ namespace StumpyUGXTools
             }
         }
 
-        //Loading/Saving
+        // Loading/Saving //
         string openFilePath;
         bool ugxLoaded = false;
         int DoUGXLoad(string path)
@@ -431,7 +433,7 @@ namespace StumpyUGXTools
         }
 
 
-
+        // Classes ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         public enum AttribType { FLOAT, UINT8, UINT16, UINT32 }
         public class PathBox
         {
@@ -859,12 +861,29 @@ namespace StumpyUGXTools
                 public void AddToTree(TreeView tv)
                 {
                     tv.Nodes.Add(treeNode);
+                    treeNode.Expand();
                 }
                 private TreeNode treeNode = new TreeNode();
                 private List<MeshNode> children = new List<MeshNode>();
             }
             public class MeshNode
             {
+                ContextMenuStrip cms = new ContextMenuStrip();
+                ToolStripMenuItem importedMeshMenuItem = new ToolStripMenuItem();
+                ToolStripMenuItem deleteMenuItem = new ToolStripMenuItem();
+                public MeshNode()
+                {
+                    cms.Items.Add(importedMeshMenuItem);
+                    importedMeshMenuItem.Click += new EventHandler(showMeshMenu);
+                    importedMeshMenuItem.Text = "Mesh Settings";
+                    treeNode.ContextMenuStrip = cms;
+                }
+                void showMeshMenu(object o, EventArgs e)
+                {
+                    Console.WriteLine("A");
+                    //editor.ShowImportedMeshMenu(meshIndex);
+                }
+
                 public void SetParent(TreeNode t)
                 {
                     t.Nodes.Add(treeNode);
@@ -874,7 +893,8 @@ namespace StumpyUGXTools
                     treeNode.Text = s;
                 }
                 private TreeNode treeNode = new TreeNode();
-                public int meshIndex = 0;
+                public int meshIndex = -1;
+
             }
 
         }
@@ -1092,14 +1112,12 @@ namespace StumpyUGXTools
 
         public class Viewport
         {
-
             public OpenTK.GLControl viewport;
             System.Windows.Forms.Timer viewportUpdateTimer;
             ViewportCamera camera = new ViewportCamera();
             ViewportGrid grid = new ViewportGrid();
 
-            public int globalShader, ubo;
-
+            public int ubo;
 
             public void InitViewport()
             {
@@ -1135,70 +1153,16 @@ namespace StumpyUGXTools
             }
             public void InitOGL()
             {
-                #region Shader Strings
-                //////////////////////////////////////////////////////
-                string vs =
-    @"#version 420 core
+                TextureTarget t;
+                byte[] b = new byte[16];
+                using (var streamReader = new MemoryStream())
+                {
+                    Assembly.GetExecutingAssembly().GetManifestResourceStream("StumpyUGXTools.null.dds").CopyTo(streamReader);
+                    b = streamReader.ToArray();
+                }
+                ImageDDS.LoadFromDisk(b, out editor.nullTexture, out t);
 
-layout (location = 0) in vec3 positionIn;
-layout (location = 1) in vec2 uvIn;
-layout (location = 2) in vec3 normalIn;
-
-layout(std140, binding = 0) uniform GlobalMatrices
-{
-    mat4 projectionMatrix;
-    mat4 viewMatrix;
-};
-uniform mat4 modelMatrix;
-out vec2 uv;
-
-void main()
-{
-    uv = uvIn;
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
-}";
-                //////////////////////////////////////////////////////
-                string fs =
-    @"#version 420 core
-
-in vec2 uv;
-uniform vec4 color;
-uniform sampler2D textureSampler;
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = texture(textureSampler, uv);
-}";
-                //////////////////////////////////////////////////////
-                #endregion
-
-                int vao = GL.GenVertexArray();
-                GL.BindVertexArray(vao);
-
-                int vertS, fragS;
-                vertS = GL.CreateShader(ShaderType.VertexShader);
-                GL.ShaderSource(vertS, vs);
-                fragS = GL.CreateShader(ShaderType.FragmentShader);
-                GL.ShaderSource(fragS, fs);
-
-                GL.CompileShader(vertS);
-                string infoLogVert = GL.GetShaderInfoLog(vertS);
-                if (infoLogVert != System.String.Empty)
-                    System.Console.WriteLine(infoLogVert);
-                GL.CompileShader(fragS);
-                string infoLogFrag = GL.GetShaderInfoLog(fragS);
-                if (infoLogFrag != System.String.Empty)
-                    System.Console.WriteLine(infoLogFrag);
-
-
-                globalShader = GL.CreateProgram();
-                GL.AttachShader(globalShader, vertS);
-                GL.AttachShader(globalShader, fragS);
-                GL.LinkProgram(globalShader);
-                GL.UseProgram(globalShader);
-
-                Matrix4 proj = Matrix4.CreatePerspectiveFieldOfView(1.523f, viewport.Width / viewport.Height, .01f, 250f);
+                Matrix4 proj = Matrix4.CreatePerspectiveFieldOfView(1.525f, viewport.Width / viewport.Height, .01f, 250f);
 
                 ubo = GL.GenBuffer();
                 GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
@@ -1206,14 +1170,18 @@ void main()
                 GL.BindBuffer(BufferTarget.UniformBuffer, 0);
 
                 GL.BindBufferBase(BufferRangeTarget.UniformBuffer, 0, ubo);
-                GL.UniformBlockBinding(globalShader, GL.GetUniformBlockIndex(globalShader, "GlobalMatrices"), 0);
-
 
                 GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
                 GL.BufferSubData(BufferTarget.UniformBuffer, IntPtr.Zero, Marshal.SizeOf(new Matrix4()), ref proj);
                 GL.BindBuffer(BufferTarget.UniformBuffer, 0);
 
                 GL.Enable(EnableCap.DepthTest);
+
+                //temp
+                //Mesh m = editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\backpack.fbx")[0];
+                //m.InitDrawing();
+                //editor.imports.Add(m);
+                //
             }
 
             //viewport functions
@@ -1227,11 +1195,10 @@ void main()
                 //draw
                 camera.UpdateCamera();
                 grid.DrawGrid();
-                foreach(Mesh m in editor.imports)
+                foreach (Mesh m in editor.imports)
                 {
                     m.Draw();
                 }
-                //
 
                 viewport.SwapBuffers();
             }
@@ -1350,8 +1317,65 @@ void main()
                 int xLine;
                 int zLine;
                 int ib;
+                public int gridShader;
                 public void InitGrid()
                 {
+                    #region Shader Strings
+                    //////////////////////////////////////////////////////
+                    string vs =
+        @"#version 420 core
+
+layout (location = 0) in vec3 positionIn;
+
+layout(std140, binding = 0) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+uniform mat4 modelMatrix;
+
+void main()
+{
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
+}";
+                    //////////////////////////////////////////////////////
+                    string fs =
+        @"#version 420 core
+
+uniform vec4 color;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = color;
+}";
+                    //////////////////////////////////////////////////////
+                    #endregion
+                    
+                    int vertS, fragS;
+                    vertS = GL.CreateShader(ShaderType.VertexShader);
+                    GL.ShaderSource(vertS, vs);
+                    fragS = GL.CreateShader(ShaderType.FragmentShader);
+                    GL.ShaderSource(fragS, fs);
+
+                    GL.CompileShader(vertS);
+                    string infoLogVert = GL.GetShaderInfoLog(vertS);
+                    if (infoLogVert != System.String.Empty)
+                        System.Console.WriteLine(infoLogVert);
+                    GL.CompileShader(fragS);
+                    string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                    if (infoLogFrag != System.String.Empty)
+                        System.Console.WriteLine(infoLogFrag);
+
+
+                    gridShader = GL.CreateProgram();
+                    GL.AttachShader(gridShader, vertS);
+                    GL.AttachShader(gridShader, fragS);
+                    GL.LinkProgram(gridShader);
+                    GL.UseProgram(gridShader);
+                    cLoc = GL.GetUniformLocation(gridShader, "color");
+                    mLoc = GL.GetUniformLocation(gridShader, "modelMatrix");
+
                     xLine = GL.GenBuffer();
                     zLine = GL.GenBuffer();
                     ib = GL.GenBuffer();
@@ -1369,156 +1393,44 @@ void main()
 
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
                     GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-
-                    cLoc = GL.GetUniformLocation(editor.viewport.globalShader, "color");
-                    mLoc = GL.GetUniformLocation(editor.viewport.globalShader, "modelMatrix");
                 }
                 int cLoc;
                 int mLoc;
+                int gridQuadrantSize = 10;
                 public void DrawGrid()
                 {
+                    GL.UseProgram(gridShader);
                     Matrix4 m;
+                    
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
+                    GL.Uniform4(cLoc, new Vector4(0.2f, 0.2f, .2f, 1f));
 
-                    #region X-Axis Lines
                     GL.BindBuffer(BufferTarget.ArrayBuffer, xLine);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
+                    for(int i = 1; i < gridQuadrantSize + 1; i++)
+                    {
+                        m = Matrix4.CreateTranslation(new Vector3(0, 0, i));
+                        GL.UniformMatrix4(mLoc, false, ref m);
+                        GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
+                        m = Matrix4.CreateTranslation(new Vector3(0, 0, -i));
+                        GL.UniformMatrix4(mLoc, false, ref m);
+                        GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
+                    }
 
-                    GL.Uniform4(cLoc, new Vector4(0.25f, 0.25f, .25f, 1f));
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 1));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 2));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 3));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 4));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 5));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 6));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 7));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 8));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 9));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, 10));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-
-                    GL.Uniform4(cLoc, new Vector4(0.25f, 0.25f, .25f, 1f));
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -1));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -2));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -3));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -4));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -5));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -6));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -7));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -8));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -9));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(0, 0, -10));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    #endregion
-
-                    #region Y-Axis Lines
                     GL.BindBuffer(BufferTarget.ArrayBuffer, zLine);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
-
-                    GL.Uniform4(cLoc, new Vector4(0.25f, 0.25f, .25f, 1f));
-                    m = Matrix4.CreateTranslation(new Vector3(1, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(2, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(3, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(4, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(5, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(6, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(7, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(8, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(9, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(10, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-
-                    GL.Uniform4(cLoc, new Vector4(0.25f, 0.25f, .25f, 1f));
-                    m = Matrix4.CreateTranslation(new Vector3(-1, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-2, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-3, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-4, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-5, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-6, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-7, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-8, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-9, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    m = Matrix4.CreateTranslation(new Vector3(-10, 0, 0));
-                    GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
-                    #endregion
+                    for (int i = 1; i < gridQuadrantSize + 1; i++)
+                    {
+                        m = Matrix4.CreateTranslation(new Vector3(i, 0, 0));
+                        GL.UniformMatrix4(mLoc, false, ref m);
+                        GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
+                        m = Matrix4.CreateTranslation(new Vector3(-i, 0, 0));
+                        GL.UniformMatrix4(mLoc, false, ref m);
+                        GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
+                    }
+                    
 
                     GL.Uniform4(cLoc, new Vector4(0.4f, 0.4f, 1.0f, 1.0f));
                     m = Matrix4.CreateTranslation(new Vector3(0, 0, 0));
@@ -1540,6 +1452,8 @@ void main()
                     m = Matrix4.CreateTranslation(new Vector3(0, 0, 0));
                     GL.UniformMatrix4(mLoc, false, ref m);
                     GL.Uniform4(cLoc, new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+
+                    GL.UseProgram(0);
                 }
             }
             public class InputKey
@@ -1572,9 +1486,10 @@ void main()
         public class Mesh
         {
             //transform
-            private Vector3 position;
-            private Quaternion rotation;
-            private Vector3 scale;
+            private Matrix4 modelMatrix;
+            private Vector3 position = Vector3.Zero;
+            private Quaternion rotation = Quaternion.Identity;
+            private Vector3 scale = Vector3.One;
             public void Move(float x, float y, float z)
             {
                 Move(new Vector3(x, y, z));
@@ -1582,10 +1497,16 @@ void main()
             public void Move(Vector3 v)
             {
                 position += v;
+                UpdateModelMatrix();
+            }
+            private void UpdateModelMatrix()
+            {
+                modelMatrix = Matrix4.CreateTranslation(position);
+                modelMatrix *= Matrix4.CreateFromQuaternion(rotation);
+                modelMatrix *= Matrix4.CreateScale(scale);
             }
 
             //data
-            public int importIndex;
             public struct Vertex
             {
                 public SystemHalf.Half x, y, z;
@@ -1597,7 +1518,7 @@ void main()
             public List<Vertex> vertices;
             public List<uint> indices;
             public int
-                materialID = 0,
+                materialID = -1,
                 boneID,
                 vertexSize,
                 faceCount;
@@ -1607,11 +1528,80 @@ void main()
             //OGL
             int vb, ib;
             int indexCount;
+            int meshShader, mLoc, cLoc;
+            Vector3 color;
             public void InitDrawing()
             {
+                #region Shader Strings
+                //////////////////////////////////////////////////////
+                string vs =
+    @"#version 420 core
+
+layout (location = 0) in vec3 positionIn;
+layout (location = 1) in vec2 uvIn;
+layout (location = 2) in vec3 normalIn;
+
+layout(std140, binding = 0) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+uniform mat4 modelMatrix;
+out vec2 uv;
+
+void main()
+{
+    uv = uvIn;
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
+}";
+                //////////////////////////////////////////////////////
+                string fs =
+    @"#version 420 core
+
+in vec2 uv;
+uniform vec4 color;
+uniform sampler2D textureSampler;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = texture(textureSampler, uv) * color;
+}";
+                //////////////////////////////////////////////////////
+                #endregion
+
+                int vao = GL.GenVertexArray();
+                GL.BindVertexArray(vao);
+
+                int vertS, fragS;
+                vertS = GL.CreateShader(ShaderType.VertexShader);
+                GL.ShaderSource(vertS, vs);
+                fragS = GL.CreateShader(ShaderType.FragmentShader);
+                GL.ShaderSource(fragS, fs);
+
+                GL.CompileShader(vertS);
+                string infoLogVert = GL.GetShaderInfoLog(vertS);
+                if (infoLogVert != System.String.Empty)
+                    System.Console.WriteLine(infoLogVert);
+                GL.CompileShader(fragS);
+                string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                if (infoLogFrag != System.String.Empty)
+                    System.Console.WriteLine(infoLogFrag);
+
+                meshShader = GL.CreateProgram();
+                GL.AttachShader(meshShader, vertS);
+                GL.AttachShader(meshShader, fragS);
+                GL.LinkProgram(meshShader);
+                GL.UseProgram(meshShader);
+
+                mLoc = GL.GetUniformLocation(meshShader, "modelMatrix");
+                cLoc = GL.GetUniformLocation(meshShader, "color");
+                GL.UniformBlockBinding(meshShader, GL.GetUniformBlockIndex(meshShader, "GlobalMatrices"), 0);
+                
+
                 vb = GL.GenBuffer();
                 ib = GL.GenBuffer();
-
+                
                 GL.BindBuffer(BufferTarget.ArrayBuffer, vb);
                 GL.BufferData(BufferTarget.ArrayBuffer, Marshal.SizeOf(new Vertex()) * vertices.Count, vertices.ToArray(), BufferUsageHint.StaticDraw);
                 GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
@@ -1621,9 +1611,16 @@ void main()
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 
                 indexCount = indices.Count;
+
+                UpdateModelMatrix();
+                color = new Vector3((float)random.NextDouble(), (float)random.NextDouble(), (float)random.NextDouble());
             }
             public void Draw()
             {
+                GL.UseProgram(meshShader);
+                
+                GL.UniformMatrix4(mLoc, false, ref modelMatrix);
+
                 GL.BindBuffer(BufferTarget.ArrayBuffer, vb);
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
 
@@ -1634,12 +1631,26 @@ void main()
                 GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Mesh.Vertex()), Marshal.SizeOf(new SystemHalf.Half()) * 5); //normal
                 GL.EnableVertexAttribArray(2);
 
-                GL.BindTexture(TextureTarget.Texture2D, editor.materialDiffuseTextures[materialID]);
+                if (materialID > -1)
+                {
+                    GL.BindTexture(TextureTarget.Texture2D, editor.materialDiffuseTextures[materialID]);
+                    GL.Uniform4(cLoc, new Vector4(1, 1, 1, 1));
+                }
+                if (materialID == -1)
+                {
+                    GL.BindTexture(TextureTarget.Texture2D, editor.nullTexture);
+                    GL.Uniform4(cLoc, new Vector4(color, 1));
+                }
 
                 GL.DrawElements(PrimitiveType.Triangles, indexCount, DrawElementsType.UnsignedInt, 0);
                 GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+
+                GL.UseProgram(0);
             }
+
+            //misc
+            static Random random = new Random();
         }
 
         //public struct Model
