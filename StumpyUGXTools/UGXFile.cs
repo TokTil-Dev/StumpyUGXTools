@@ -92,7 +92,6 @@ namespace StumpyUGXTools
 
     class UGXFile
     {
-        BigEndianBitConverter bec = new BigEndianBitConverter();
         public string fileName;
 
         public UGXFile()
@@ -399,6 +398,11 @@ namespace StumpyUGXTools
             }
 
             return 1;
+        }
+        public List<Mesh> GetMeshes()
+        {
+            List<Mesh> meshes = new List<Mesh>();
+            return meshes;
         }
         #endregion
     }

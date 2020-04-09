@@ -281,30 +281,30 @@ namespace StumpyUGXTools
         // Loading/Saving //
         string openFilePath;
         bool ugxLoaded = false;
-        int DoUGXLoad(string path)
+        int  DoUGXLoad(string path)
         {
             if (File.Exists(path))
             {
-                if (ugx.Load(path) == -1)
+                UGXFile f = new UGXFile();
+                if (f.Load(path) == -1)
+                { return -1; }
+                else
                 {
-                    DoUGXUnload();
-                    editor.LogOut("Invalid or corrupt file: " + path);
-                    return -1;
+                    materialEditorTab.Clear();
+                    f.fileName = Path.GetFileNameWithoutExtension(path);
+                    f.InitTextureEditing();
+                    f.InitMeshEditing();
+                    ugx = f;
+                    LogOut("UGX Loaded: " + path);
+                    openFilePath = path;
+                    ugxLoaded = true;
+                    DoUI();
+                    LoadDiffuseTextures();
+                    return 1;
                 }
-                materialEditorTab.Unload();
-                ugx.fileName = Path.GetFileNameWithoutExtension(path);
-                ugx.InitTextureEditing();
-                ugx.InitMeshEditing();
-                LogOut("UGX Loaded: " + path);
-                openFilePath = path;
-                ugxLoaded = true;
-                DoUI();
-                LoadDiffuseTextures();
-                return 1;
             }
             else
             {
-                DoUGXUnload();
                 LogOut("File not found: " + path);
                 return -1;
             }
@@ -396,13 +396,11 @@ namespace StumpyUGXTools
         {
             if (editor.fbd.ShowDialog() == DialogResult.OK)
             {
-                if (!editor.fbd.FileName.Contains(".fbx"))
+                if (Path.GetExtension(editor.fbd.FileName) != ".fbx" && Path.GetExtension(editor.fbd.FileName) != ".FBX")
                 {
                     editor.LogOut("File selected was not an fbx.");
                     return;
                 }
-
-                editor.materialEditorTab.Unload();
 
                 List<Mesh> m = editor.ImportAsset(editor.fbd.FileName);
                 MeshEditor.RootNode rn = new MeshEditor.RootNode();
@@ -1100,7 +1098,7 @@ namespace StumpyUGXTools
                     a.value.Text = "0";
                 }
             }
-            public void Unload()
+            public void Clear()
             {
                 foreach (MatData m in matData)
                 {
@@ -1178,9 +1176,11 @@ namespace StumpyUGXTools
                 GL.Enable(EnableCap.DepthTest);
 
                 //temp
-                //Mesh m = editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\backpack.fbx")[0];
-                //m.InitDrawing();
-                //editor.imports.Add(m);
+                Mesh m = editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\focus.fbx")[0];
+                m.InitDrawing();
+                m.Rotate(1.1f, .56f, .343f);
+                m.Move(1, 1, 1);
+                editor.imports.Add(m);
                 //
             }
 
@@ -1314,12 +1314,13 @@ namespace StumpyUGXTools
             }
             public class ViewportGrid
             {
-                int xLine;
-                int zLine;
-                int ib;
+                int xLineVB, zLineVB, lineIB;
+                int xLetterVB, xLetterIB;
+                int zLetterVB, zLetterIB;
                 public int gridShader;
                 public void InitGrid()
                 {
+                    #region Grid Shader
                     #region Shader Strings
                     //////////////////////////////////////////////////////
                     string vs =
@@ -1351,7 +1352,7 @@ void main()
 }";
                     //////////////////////////////////////////////////////
                     #endregion
-                    
+
                     int vertS, fragS;
                     vertS = GL.CreateShader(ShaderType.VertexShader);
                     GL.ShaderSource(vertS, vs);
@@ -1375,24 +1376,103 @@ void main()
                     GL.UseProgram(gridShader);
                     cLoc = GL.GetUniformLocation(gridShader, "color");
                     mLoc = GL.GetUniformLocation(gridShader, "modelMatrix");
+                    #endregion
 
-                    xLine = GL.GenBuffer();
-                    zLine = GL.GenBuffer();
-                    ib = GL.GenBuffer();
+                    #region Line Buffers
+                    xLineVB = GL.GenBuffer();
+                    zLineVB = GL.GenBuffer();
+                    lineIB = GL.GenBuffer();
 
                     Vector3[] xData = { new Vector3(10, 0, 0), new Vector3(-10, 0, 0) };
                     Vector3[] zData = { new Vector3(0, 0, 10), new Vector3(0, 0, -10) };
                     int[] indices = { 0, 1 };
 
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLineVB);
                     GL.BufferData(BufferTarget.ArrayBuffer, Marshal.SizeOf(new Vector3()) * 2, xData, BufferUsageHint.StaticDraw);
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLineVB);
                     GL.BufferData(BufferTarget.ArrayBuffer, Marshal.SizeOf(new Vector3()) * 2, zData, BufferUsageHint.StaticDraw);
-                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, lineIB);
                     GL.BufferData(BufferTarget.ElementArrayBuffer, sizeof(int) * 2, indices, BufferUsageHint.StaticDraw);
 
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
                     GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                    #endregion
+
+                    #region Letter Buffers
+                    #region Z
+                    Vector3[] zV =
+                    {
+                        new Vector3(-1f, 0, 1.2f),  //0
+                        new Vector3(1f, 0, 1.2f),   //1
+                        new Vector3(-1f, 0, 0.8f),  //2
+                        new Vector3(1f, 0, 0.8f),   //3
+                        new Vector3(0.4f, 0, 0.8f), //4
+                        new Vector3(-1f, 0, -0.8f), //5
+                        new Vector3(-.4f, 0, -0.8f),//6
+                        new Vector3(1,0,-.8f)      ,//7
+                        new Vector3(1,0,-1.2f)     ,//8
+                        new Vector3(-1,0,-1.2f)     //9
+                    };
+                    uint[] zI =
+                    {
+                        0, 1, 2, //top
+                        1, 2, 3,
+
+                        4, 3, 5, //middle
+                        3, 5, 6,
+
+                        5, 7, 9, //bottom
+                        7, 9, 8
+                    };
+                
+
+                    zLetterVB = GL.GenBuffer();
+                    zLetterIB = GL.GenBuffer();
+
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLetterVB);
+                    GL.BufferData(BufferTarget.ArrayBuffer, Marshal.SizeOf(new Vector3()) * 10, zV, BufferUsageHint.StaticDraw);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, zLetterIB);
+                    GL.BufferData(BufferTarget.ElementArrayBuffer, sizeof(uint) * 18, zI, BufferUsageHint.StaticDraw);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    #endregion
+                    #region X
+                    Vector3[] xV =
+{
+                        new Vector3(1,0,1.2f),
+                        new Vector3(-.4f,0,-1.2f),
+                        new Vector3(-1,0,-1.2f),
+                        new Vector3(.4f,0,1.2f),
+
+                        new Vector3(-1,0,1.2f),
+                        new Vector3(-.4f,0,1.2f),
+                        new Vector3(1,0,-1.2f),
+                        new Vector3(.4f,0,-1.2f),
+
+                    };
+                    uint[] xI =
+                    {
+                        0, 1, 2, //BL-TR
+                        0, 2, 3,
+
+                        4, 5, 6, //BR-TL
+                        4, 6, 7
+                    };
+
+
+                    xLetterVB = GL.GenBuffer();
+                    xLetterIB = GL.GenBuffer();
+
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLetterVB);
+                    GL.BufferData(BufferTarget.ArrayBuffer, Marshal.SizeOf(new Vector3()) * 8, xV, BufferUsageHint.StaticDraw);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, xLetterIB);
+                    GL.BufferData(BufferTarget.ElementArrayBuffer, sizeof(uint) * 12, xI, BufferUsageHint.StaticDraw);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    #endregion
+                    #endregion
                 }
                 int cLoc;
                 int mLoc;
@@ -1402,10 +1482,10 @@ void main()
                     GL.UseProgram(gridShader);
                     Matrix4 m;
                     
-                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, lineIB);
                     GL.Uniform4(cLoc, new Vector4(0.2f, 0.2f, .2f, 1f));
 
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLineVB);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
                     for(int i = 1; i < gridQuadrantSize + 1; i++)
@@ -1418,7 +1498,7 @@ void main()
                         GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
                     }
 
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLineVB);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
                     for (int i = 1; i < gridQuadrantSize + 1; i++)
@@ -1435,7 +1515,7 @@ void main()
                     GL.Uniform4(cLoc, new Vector4(0.4f, 0.4f, 1.0f, 1.0f));
                     m = Matrix4.CreateTranslation(new Vector3(0, 0, 0));
                     GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLineVB);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
                     GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
@@ -1443,10 +1523,41 @@ void main()
                     GL.Uniform4(cLoc, new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
                     m = Matrix4.CreateTranslation(new Vector3(0, 0, 0));
                     GL.UniformMatrix4(mLoc, false, ref m);
-                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLine);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLineVB);
                     GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
                     GL.EnableVertexAttribArray(0);
                     GL.DrawElements(PrimitiveType.Lines, 2, DrawElementsType.UnsignedInt, 0);
+
+                    #region Draw Letters
+                    #region Z
+                    m = Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(0, 0, gridQuadrantSize + .5f));
+                    
+                    GL.UniformMatrix4(mLoc, false, ref m);
+                    GL.Uniform4(cLoc, new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, zLetterIB);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, zLetterVB);
+                    GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
+                    GL.EnableVertexAttribArray(0);
+                    GL.DrawElements(PrimitiveType.Triangles, 18, DrawElementsType.UnsignedInt, 0);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    #endregion
+                    #region X
+                    m = Matrix4.CreateRotationY((float)Math.PI / 2) * Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(gridQuadrantSize + .5f, 0, 0));
+
+                    GL.UniformMatrix4(mLoc, false, ref m);
+                    GL.Uniform4(cLoc, new Vector4(0.4f, 0.4f, 1.0f, 1.0f));
+
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, xLetterIB);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, xLetterVB);
+                    GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Vector3()), 0);
+                    GL.EnableVertexAttribArray(0);
+                    GL.DrawElements(PrimitiveType.Triangles, 12, DrawElementsType.UnsignedInt, 0);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    #endregion
+                    #endregion
 
                     //reset uniforms
                     m = Matrix4.CreateTranslation(new Vector3(0, 0, 0));
@@ -1492,12 +1603,17 @@ void main()
             private Vector3 scale = Vector3.One;
             public void Move(float x, float y, float z)
             {
-                Move(new Vector3(x, y, z));
-            }
-            public void Move(Vector3 v)
-            {
-                position += v;
+                position += new Vector3(x,y,z);
                 UpdateModelMatrix();
+            }
+            public void Rotate(float yaw, float pitch, float roll)
+            {
+                rotation *= Quaternion.FromEulerAngles(pitch, yaw, roll);
+                UpdateModelMatrix();
+            }
+            public void SetScale(float x, float y, float z)
+            {
+                scale = new Vector3(x, y, z);
             }
             private void UpdateModelMatrix()
             {
@@ -1526,16 +1642,20 @@ void main()
             public string name;
 
             //OGL
-            int vb, ib;
-            int indexCount;
-            int meshShader, mLoc, cLoc;
+            int vb, ib, indexCount;
+            int mLoc, cLoc;
+            static int meshShader;
+            static bool shaderInit = false;
             Vector3 color;
             public void InitDrawing()
             {
-                #region Shader Strings
-                //////////////////////////////////////////////////////
-                string vs =
-    @"#version 420 core
+                #region Mesh Shader
+                if (!shaderInit)
+                {
+                    #region Shader Strings
+                    //////////////////////////////////////////////////////
+                    string vs =
+        @"#version 420 core
 
 layout (location = 0) in vec3 positionIn;
 layout (location = 1) in vec2 uvIn;
@@ -1547,58 +1667,125 @@ layout(std140, binding = 0) uniform GlobalMatrices
     mat4 viewMatrix;
 };
 uniform mat4 modelMatrix;
-out vec2 uv;
+
+out VS_OUT {
+    vec2 uv;
+    vec3 normal; 
+} vs_out;
 
 void main()
 {
-    uv = uvIn;
+    vs_out.uv = uvIn;
+    vs_out.normal = normalIn;
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
 }";
-                //////////////////////////////////////////////////////
-                string fs =
-    @"#version 420 core
+                    string gs =
+        @"#version 420 core
+layout (triangles) in;
+layout (triangle_strip, max_vertices = 3) out;
 
-in vec2 uv;
+layout(std140, binding = 0) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+uniform mat4 modelMatrix;
+
+in VS_OUT {
+    vec2 uv;
+    vec3 normal; 
+} vs_out[];
+
+out GS_OUT {
+vec2 uv;
+vec3 normal; 
+float lightStrength;
+} gs_out;
+
+void main()
+{
+    vec3 a = gl_in[0].gl_Position.xyz;
+    vec3 b = gl_in[1].gl_Position.xyz;
+    vec3 c = gl_in[2].gl_Position.xyz;
+    vec3 normal = normalize(cross(a-b, b-c));
+    vec3 lightDir = vec3(0, 0, -1); //out from the camera.
+    gs_out.lightStrength = max(0, dot(normalize(normal), lightDir));
+
+    gl_Position = gl_in[0].gl_Position;
+    gs_out.uv = vs_out[0].uv;
+    gs_out.normal = vs_out[0].normal;
+    EmitVertex();
+    gl_Position = gl_in[1].gl_Position;
+    gs_out.uv = vs_out[1].uv;
+    gs_out.normal = vs_out[1].normal;
+    EmitVertex();
+    gl_Position = gl_in[2].gl_Position;
+    gs_out.uv = vs_out[2].uv;
+    gs_out.normal = vs_out[2].normal;
+    EmitVertex();
+    EndPrimitive();
+}
+";
+                    //////////////////////////////////////////////////////
+                    string fs =
+        @"#version 420 core
+
+in GS_OUT {
+vec2 uv;
+vec3 normal; 
+float lightStrength;
+} gs_out;
+
 uniform vec4 color;
 uniform sampler2D textureSampler;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = texture(textureSampler, uv) * color;
+    FragColor = texture(textureSampler, gs_out.uv) * (color * gs_out.lightStrength);
 }";
-                //////////////////////////////////////////////////////
+                    //////////////////////////////////////////////////////
+                    #endregion
+
+                    int vao = GL.GenVertexArray();
+                    GL.BindVertexArray(vao);
+
+                    int vertS, geomS, fragS;
+                    vertS = GL.CreateShader(ShaderType.VertexShader);
+                    GL.ShaderSource(vertS, vs);
+                    geomS = GL.CreateShader(ShaderType.GeometryShader);
+                    GL.ShaderSource(geomS, gs);
+                    fragS = GL.CreateShader(ShaderType.FragmentShader);
+                    GL.ShaderSource(fragS, fs);
+
+                    GL.CompileShader(vertS);
+                    string infoLogVert = GL.GetShaderInfoLog(vertS);
+                    if (infoLogVert != System.String.Empty)
+                        System.Console.WriteLine(infoLogVert);
+                    GL.CompileShader(geomS);
+                    string infoLogGeom = GL.GetShaderInfoLog(geomS);
+                    if (infoLogGeom != System.String.Empty)
+                        System.Console.WriteLine(infoLogGeom);
+                    GL.CompileShader(fragS);
+                    string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                    if (infoLogFrag != System.String.Empty)
+                        System.Console.WriteLine(infoLogFrag);
+
+                    meshShader = GL.CreateProgram();
+                    GL.AttachShader(meshShader, vertS);
+                    GL.AttachShader(meshShader, fragS);
+                    GL.AttachShader(meshShader, geomS);
+                    GL.LinkProgram(meshShader);
+                    GL.UseProgram(meshShader);
+
+                    shaderInit = true;
+                }
                 #endregion
-
-                int vao = GL.GenVertexArray();
-                GL.BindVertexArray(vao);
-
-                int vertS, fragS;
-                vertS = GL.CreateShader(ShaderType.VertexShader);
-                GL.ShaderSource(vertS, vs);
-                fragS = GL.CreateShader(ShaderType.FragmentShader);
-                GL.ShaderSource(fragS, fs);
-
-                GL.CompileShader(vertS);
-                string infoLogVert = GL.GetShaderInfoLog(vertS);
-                if (infoLogVert != System.String.Empty)
-                    System.Console.WriteLine(infoLogVert);
-                GL.CompileShader(fragS);
-                string infoLogFrag = GL.GetShaderInfoLog(fragS);
-                if (infoLogFrag != System.String.Empty)
-                    System.Console.WriteLine(infoLogFrag);
-
-                meshShader = GL.CreateProgram();
-                GL.AttachShader(meshShader, vertS);
-                GL.AttachShader(meshShader, fragS);
-                GL.LinkProgram(meshShader);
-                GL.UseProgram(meshShader);
 
                 mLoc = GL.GetUniformLocation(meshShader, "modelMatrix");
                 cLoc = GL.GetUniformLocation(meshShader, "color");
                 GL.UniformBlockBinding(meshShader, GL.GetUniformBlockIndex(meshShader, "GlobalMatrices"), 0);
                 
-
                 vb = GL.GenBuffer();
                 ib = GL.GenBuffer();
                 
