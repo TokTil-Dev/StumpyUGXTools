@@ -12,7 +12,7 @@ using StumpyUGXTools;
 static class Program
 {
     public static BigEndianBitConverter bec = new BigEndianBitConverter();
-    public static string version = "0.5.1";
+    public static string version = "0.9.0";
     public static Editor editor = new Editor();
 
     [STAThread]

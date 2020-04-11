@@ -41,6 +41,7 @@ namespace StumpyUGXTools
         private ToolStripMenuItem keyBindingsToolStripMenuItem;
         private ToolStripMenuItem editToolStripMenuItem;
         private ToolStripMenuItem textureReferencePathToolStripMenuItem;
+        private Label versionLabel;
         private ToolStripMenuItem saveToolStripMenuItem;
 
         public void InitializeComponent()
@@ -58,10 +59,11 @@ namespace StumpyUGXTools
             this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fBXToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.keyBindingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.textureReferencePathToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.keyBindingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.versionLabel = new System.Windows.Forms.Label();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -145,20 +147,6 @@ namespace StumpyUGXTools
             this.fBXToolStripMenuItem.Text = "FBX";
             this.fBXToolStripMenuItem.Click += new System.EventHandler(this.fBXToolStripMenuItem_Click);
             // 
-            // helpToolStripMenuItem
-            // 
-            this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.keyBindingsToolStripMenuItem});
-            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
-            this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
-            this.helpToolStripMenuItem.Text = "Help";
-            // 
-            // keyBindingsToolStripMenuItem
-            // 
-            this.keyBindingsToolStripMenuItem.Name = "keyBindingsToolStripMenuItem";
-            this.keyBindingsToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
-            this.keyBindingsToolStripMenuItem.Text = "Key Bindings";
-            // 
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -174,9 +162,34 @@ namespace StumpyUGXTools
             this.textureReferencePathToolStripMenuItem.Text = "Texture Reference Path";
             this.textureReferencePathToolStripMenuItem.Click += new System.EventHandler(this.textureReferencePathToolStripMenuItem_Click);
             // 
+            // helpToolStripMenuItem
+            // 
+            this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.keyBindingsToolStripMenuItem});
+            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
+            this.helpToolStripMenuItem.Text = "Help";
+            // 
+            // keyBindingsToolStripMenuItem
+            // 
+            this.keyBindingsToolStripMenuItem.Name = "keyBindingsToolStripMenuItem";
+            this.keyBindingsToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.keyBindingsToolStripMenuItem.Text = "Key Bindings";
+            // 
+            // versionLabel
+            // 
+            this.versionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.versionLabel.Location = new System.Drawing.Point(1397, 9);
+            this.versionLabel.Name = "versionLabel";
+            this.versionLabel.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.versionLabel.Size = new System.Drawing.Size(41, 15);
+            this.versionLabel.TabIndex = 10;
+            this.versionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
             // Editor
             // 
             this.ClientSize = new System.Drawing.Size(1450, 720);
+            this.Controls.Add(this.versionLabel);
             this.Controls.Add(this.menuStrip);
             this.Controls.Add(this.editorSelecter);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -214,6 +227,7 @@ namespace StumpyUGXTools
         public MaterialEditor materialEditorTab;
 
         List<Mesh> imports = new List<Mesh>();
+        List<Mesh> UGXmeshes = new List<Mesh>();
         List<uint> materialDiffuseTextures = new List<uint>();
         uint nullTexture;
 
@@ -244,27 +258,18 @@ namespace StumpyUGXTools
                 meshEditorTab.Show();
             }
         }
-        void DoUI()
-        {
-            SwapView(SelectedView.Mesh);
-            Controls.Add(editorSelecter);
-            materialEditorTab.SetupPathView();
-            meshEditorTab.SetupMeshView();
-            viewport.InitViewport();
-
-            int sel = editorSelecter.SelectedIndex;
-            editorSelecter.SelectedIndex = -1;
-            editorSelecter.SelectedIndex = sel;
-        }
         /////// WinForms Functions
         void GUIInit(object o, EventArgs e)
         {
+            versionLabel.Text = Program.version;
             EditorToolSideWindowWidth = 400;
             EditorToolsLeftMargin = 11;
             meshEditorTab = new MeshEditor();
             materialEditorTab = new MaterialEditor();
             viewport = new Viewport();
-            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\assault_rifle_01_out.ugx");
+            viewport.InitViewport();
+            Controls.Add(editorSelecter);
+            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art\\unsc\\infantry\\mark1suit_01\\mark1suit_01.ugx");
         }
         void EditorSelect(object o, EventArgs e)
         {
@@ -278,28 +283,38 @@ namespace StumpyUGXTools
             }
         }
 
+
         // Loading/Saving //
-        string openFilePath;
         bool ugxLoaded = false;
         int  DoUGXLoad(string path)
         {
             if (File.Exists(path))
             {
                 UGXFile f = new UGXFile();
-                if (f.Load(path) == -1)
-                { return -1; }
+                if (f.Load(path) == -1) { return -1; }
                 else
                 {
+                    UGXmeshes.Clear();
                     materialEditorTab.Clear();
+                    meshEditorTab.ClearUGXTree();
                     f.fileName = Path.GetFileNameWithoutExtension(path);
                     f.InitTextureEditing();
                     f.InitMeshEditing();
+                    f.filePath = path;
+                    UGXmeshes.AddRange(f.GetMeshes());
+                    foreach (Mesh m in UGXmeshes) { m.InitDrawing(); }// Console.WriteLine(m.vertexSize + " " + m.name + " " + m.materialID + " " +  m.vertices.Count + " " + m.faceCount); }
                     ugx = f;
-                    LogOut("UGX Loaded: " + path);
-                    openFilePath = path;
                     ugxLoaded = true;
-                    DoUI();
+
+
+                    LogOut("UGX Loaded: " + path);
+                    editorSelecter.SelectedIndex = -1;
+                    editorSelecter.SelectedIndex = 0;
+                    materialEditorTab.SetupPathView();
+                    meshEditorTab.PopulateUGXTree();
+
                     LoadDiffuseTextures();
+                    viewport.viewport.Invalidate();
                     return 1;
                 }
             }
@@ -314,14 +329,14 @@ namespace StumpyUGXTools
             ugxLoaded = false;
             SwapView(SelectedView.Null);
             materialEditorTab.ClearTextBoxes();
-            openFilePath = "";
+            ugx.filePath = "";
         }
         void DoUGXSave()
         {
             if (!ugxLoaded) return;
             materialEditorTab.SaveMaterial();
             ugx.SaveNewMaterial();
-            ugx.Save(openFilePath);
+            ugx.Save(ugx.filePath);
             LogOut("File saved.");
         }
         public List<Mesh> ImportAsset(string path)
@@ -376,11 +391,25 @@ namespace StumpyUGXTools
             {
                 uint name = 65535;
                 TextureTarget t;
-                try
+                if (materialEditorTab.matData[i].hasValue[0])
                 {
-                    ImageDDS.LoadFromDisk(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".ddx", out name, out t);
+                    try
+                    {
+                        ImageDDS.LoadFromDisk(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".ddx", out name, out t);
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            ImageDDS.LoadFromDisk(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".dds", out name, out t);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("DDS/DDX at " + textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".ddx/.dds could not be loaded.");
+                        }
+                    }
                 }
-                catch { Console.WriteLine("A"); }
+                
                 materialDiffuseTextures.Add(name);
             }
         }
@@ -403,14 +432,14 @@ namespace StumpyUGXTools
                 }
 
                 List<Mesh> m = editor.ImportAsset(editor.fbd.FileName);
-                MeshEditor.RootNode rn = new MeshEditor.RootNode();
+                MeshEditor.ImportRootNode rn = new MeshEditor.ImportRootNode();
                 rn.SetName(Path.GetFileNameWithoutExtension(fbd.FileName));
 
                 foreach(Mesh mesh in m)
                 {
                     mesh.InitDrawing();
 
-                    MeshEditor.MeshNode mn = new MeshEditor.MeshNode();
+                    MeshEditor.ImportMeshNode mn = new MeshEditor.ImportMeshNode();
                     mn.SetName(mesh.name);
                     rn.AddChild(mn);
                     mn.meshIndex = imports.Count;
@@ -835,19 +864,10 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(ugxMeshTree);
                 editor.Controls.Remove(fbxMeshTree);
             }
-            public void SetupMeshView()
-            {
-                TreeNode n = ugxMeshTree.Nodes.Add(ugx.fileName);
-                for (int i = 0; i < ugx.subDataCount[0]; i++)
-                {
-                    n.Nodes.Add(ugx.meshNames[i]);
-                }
-                ugxMeshTree.ExpandAll();
-            }
 
-            public class RootNode
+            public class ImportRootNode
             {
-                public void AddChild(MeshNode mn)
+                public void AddChild(ImportMeshNode mn)
                 {
                     mn.SetParent(treeNode);
                     children.Add(mn);
@@ -862,14 +882,14 @@ namespace StumpyUGXTools
                     treeNode.Expand();
                 }
                 private TreeNode treeNode = new TreeNode();
-                private List<MeshNode> children = new List<MeshNode>();
+                private List<ImportMeshNode> children = new List<ImportMeshNode>();
             }
-            public class MeshNode
+            public class ImportMeshNode
             {
                 ContextMenuStrip cms = new ContextMenuStrip();
                 ToolStripMenuItem importedMeshMenuItem = new ToolStripMenuItem();
                 ToolStripMenuItem deleteMenuItem = new ToolStripMenuItem();
-                public MeshNode()
+                public ImportMeshNode()
                 {
                     cms.Items.Add(importedMeshMenuItem);
                     importedMeshMenuItem.Click += new EventHandler(showMeshMenu);
@@ -878,7 +898,6 @@ namespace StumpyUGXTools
                 }
                 void showMeshMenu(object o, EventArgs e)
                 {
-                    Console.WriteLine("A");
                     //editor.ShowImportedMeshMenu(meshIndex);
                 }
 
@@ -894,7 +913,56 @@ namespace StumpyUGXTools
                 public int meshIndex = -1;
 
             }
+            public class UGXRootNode
+            {
+                public void AddChild(UGXMeshNode mn)
+                {
+                    mn.SetParent(treeNode);
+                    children.Add(mn);
+                }
+                public void SetName(string s)
+                {
+                    treeNode.Text = s;
+                }
+                public void AddToTree(TreeView tv)
+                {
+                    tv.Nodes.Add(treeNode);
+                    treeNode.Expand();
+                }
+                private TreeNode treeNode = new TreeNode();
+                private List<UGXMeshNode> children = new List<UGXMeshNode>();
+            }
+            public class UGXMeshNode
+            {
+                public void SetParent(TreeNode t)
+                {
+                    t.Nodes.Add(treeNode);
+                }
+                public void SetName(string s)
+                {
+                    treeNode.Text = s;
+                }
+                private TreeNode treeNode = new TreeNode();
+                public int meshIndex = -1;
+            }
 
+            public void PopulateUGXTree()
+            {
+                if (editor.ugxLoaded == false) return;
+                UGXRootNode rn = new UGXRootNode();
+                foreach(Mesh m in editor.UGXmeshes)
+                {
+                    UGXMeshNode n = new UGXMeshNode();
+                    n.SetName(m.name);
+                    rn.AddChild(n);
+                }
+                rn.SetName(ugx.fileName);
+                rn.AddToTree(ugxMeshTree);
+            }
+            public void ClearUGXTree()
+            {
+                ugxMeshTree.Nodes.Clear();
+            }
         }
         public class MaterialEditor : EditorTab
         {
@@ -1114,8 +1182,11 @@ namespace StumpyUGXTools
             System.Windows.Forms.Timer viewportUpdateTimer;
             ViewportCamera camera = new ViewportCamera();
             ViewportGrid grid = new ViewportGrid();
+            Matrix4 projectionMatrix;
 
-            public int ubo;
+            public int UBO;
+            public int selectionFBO, selColorAtt, selDepthAtt;
+            public int highlightFBO, hglColorAtt, hglDepthAtt;
 
             public void InitViewport()
             {
@@ -1124,6 +1195,7 @@ namespace StumpyUGXTools
                 viewport.Size = new Size(editor.Width - 50 - editor.EditorToolSideWindowWidth, editor.Height - 95);
                 viewport.KeyDown += new KeyEventHandler(viewport_KeyDown);
                 viewport.KeyUp += new KeyEventHandler(viewport_KeyUp);
+                viewport.MouseClick += new MouseEventHandler(viewport_MouseClicked);
                 viewport.LostFocus += new EventHandler((object o, EventArgs e) =>
                 {
                     viewportUpdateTimer.Stop();
@@ -1152,7 +1224,7 @@ namespace StumpyUGXTools
             public void InitOGL()
             {
                 TextureTarget t;
-                byte[] b = new byte[16];
+                byte[] b;
                 using (var streamReader = new MemoryStream())
                 {
                     Assembly.GetExecutingAssembly().GetManifestResourceStream("StumpyUGXTools.null.dds").CopyTo(streamReader);
@@ -1160,45 +1232,101 @@ namespace StumpyUGXTools
                 }
                 ImageDDS.LoadFromDisk(b, out editor.nullTexture, out t);
 
-                Matrix4 proj = Matrix4.CreatePerspectiveFieldOfView(1.525f, viewport.Width / viewport.Height, .01f, 250f);
+                projectionMatrix = Matrix4.CreatePerspectiveFieldOfView(1.525f, viewport.Width / viewport.Height, .01f, 2500f);
 
-                ubo = GL.GenBuffer();
-                GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
+                UBO = GL.GenBuffer();
+                GL.BindBuffer(BufferTarget.UniformBuffer, UBO);
                 GL.BufferData(BufferTarget.UniformBuffer, Marshal.SizeOf(new Matrix4()) * 2, IntPtr.Zero, BufferUsageHint.StreamDraw);
                 GL.BindBuffer(BufferTarget.UniformBuffer, 0);
 
-                GL.BindBufferBase(BufferRangeTarget.UniformBuffer, 0, ubo);
+                GL.BindBufferBase(BufferRangeTarget.UniformBuffer, 0, UBO);
 
-                GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
-                GL.BufferSubData(BufferTarget.UniformBuffer, IntPtr.Zero, Marshal.SizeOf(new Matrix4()), ref proj);
+                GL.BindBuffer(BufferTarget.UniformBuffer, UBO);
+                GL.BufferSubData(BufferTarget.UniformBuffer, IntPtr.Zero, Marshal.SizeOf(new Matrix4()), ref projectionMatrix);
                 GL.BindBuffer(BufferTarget.UniformBuffer, 0);
 
                 GL.Enable(EnableCap.DepthTest);
+                GL.Enable(EnableCap.StencilTest);
 
-                //temp
-                Mesh m = editor.ImportAsset("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\focus.fbx")[0];
-                m.InitDrawing();
-                m.Rotate(1.1f, .56f, .343f);
-                m.Move(1, 1, 1);
-                editor.imports.Add(m);
-                //
+                selectionFBO = GL.GenFramebuffer();
+                selColorAtt = GL.GenTexture();
+                selDepthAtt = GL.GenRenderbuffer();
+                GL.Enable(EnableCap.Texture2D);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+                GL.BindTexture(TextureTarget.Texture2D, selColorAtt);
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, viewport.Width, viewport.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, selColorAtt, 0);
+
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, selDepthAtt);
+                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, viewport.Width, viewport.Height);
+                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, selDepthAtt);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+
+                highlightFBO = GL.GenFramebuffer();
+                hglColorAtt = GL.GenTexture();
+                hglDepthAtt = GL.GenRenderbuffer();
+                GL.Enable(EnableCap.Texture2D);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+                GL.BindTexture(TextureTarget.Texture2D, hglColorAtt);
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, viewport.Width, viewport.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, hglColorAtt, 0);
+
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, hglDepthAtt);
+                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, viewport.Width, viewport.Height);
+                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, hglDepthAtt);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             }
 
             //viewport functions
-            public void viewport_Loop()
+            void viewport_Loop()
             {
                 PollInputs();
 
                 GL.ClearColor(.3f, .3f, .3f, 1);
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
-                //draw
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
                 camera.UpdateCamera();
+
+                //draw color id to selection buffer
+                GL.StencilMask(0x00);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    m.DrawFlat();
+                }
+                foreach (Mesh m in editor.imports)
+                {
+                    m.DrawFlat();
+                }
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+                //draw normal
+                GL.StencilFunc(StencilFunction.Always, 1, 0xFF);
+                GL.StencilMask(0xFF);
                 grid.DrawGrid();
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    m.Draw();
+                }
                 foreach (Mesh m in editor.imports)
                 {
                     m.Draw();
                 }
+
+                //highlight
+                GL.StencilFunc(StencilFunction.Notequal, 1, 0xFF);
+                GL.StencilMask(0x00);
+                GL.Disable(EnableCap.StencilTest);
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    if(m.isHighlighted) m.DrawHighlight();
+                }
+                foreach (Mesh m in editor.imports)
+                {
+                    if (m.isHighlighted) m.DrawHighlight();
+                }
+                GL.Enable(EnableCap.StencilTest);
 
                 viewport.SwapBuffers();
             }
@@ -1219,6 +1347,27 @@ namespace StumpyUGXTools
                         viewport.Invalidate();
                         break;
                     }
+                }
+            }
+            void viewport_MouseClicked(object o, System.Windows.Forms.MouseEventArgs e)
+            {
+                int pixelData = 0;
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+                GL.ReadPixels(e.X, viewport.Height - e.Y, 1, 1, PixelFormat.Bgra, PixelType.UnsignedByte, ref pixelData);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+                byte r = Color.FromArgb(pixelData).R;
+                byte g = Color.FromArgb(pixelData).G;
+                byte b = Color.FromArgb(pixelData).B;
+                Vector3 pixelColor = new Vector3((float)r / (float)255,(float)g / (float)255,(float)b / (float)255);
+                foreach (Mesh m in editor.imports)
+                {
+                    if (m.color == pixelColor) m.isSelected = true;
+                    else m.isSelected = false;
+                }
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    if (m.color == pixelColor) m.isSelected = true;
+                    else m.isSelected = false;
                 }
             }
 
@@ -1261,12 +1410,13 @@ namespace StumpyUGXTools
 
                 Vector3 position = new Vector3(0, 0, -10);
                 Vector3 target = new Vector3(0, 0, 0);
+                public Matrix4 viewMatrix;
                 float radius = 0;
                 public void UpdateCamera()
                 {
-                    Matrix4 m = Matrix4.LookAt(position, target, new Vector3(0, 1, 0)) * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-                    GL.BindBuffer(BufferTarget.UniformBuffer, editor.viewport.ubo);
-                    GL.BufferSubData(BufferTarget.UniformBuffer, new IntPtr(Marshal.SizeOf(new Matrix4())), Marshal.SizeOf(new Matrix4()), ref m);
+                    viewMatrix = Matrix4.LookAt(position, target, new Vector3(0, 1, 0)) * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+                    GL.BindBuffer(BufferTarget.UniformBuffer, editor.viewport.UBO);
+                    GL.BufferSubData(BufferTarget.UniformBuffer, new IntPtr(Marshal.SizeOf(new Matrix4())), Marshal.SizeOf(new Matrix4()), ref viewMatrix);
                     GL.BindBuffer(BufferTarget.UniformBuffer, 0);
                 }
 
@@ -1305,9 +1455,6 @@ namespace StumpyUGXTools
 
                     radius += f;
                     position = Vector3.Normalize(position - target) * radius;
-
-                    Console.WriteLine(radius);
-                    Console.WriteLine(position);
                 }
 
 
@@ -1603,7 +1750,7 @@ void main()
             private Vector3 scale = Vector3.One;
             public void Move(float x, float y, float z)
             {
-                position += new Vector3(x,y,z);
+                position += new Vector3(x, y, z);
                 UpdateModelMatrix();
             }
             public void Rotate(float yaw, float pitch, float roll)
@@ -1631,8 +1778,8 @@ void main()
                 public byte b1, b2, b3, b4;
                 public byte w1, w2, w3, w4;
             }
-            public List<Vertex> vertices;
-            public List<uint> indices;
+            public List<Vertex> vertices = new List<Vertex>();
+            public List<uint> indices = new List<uint>();
             public int
                 materialID = -1,
                 boneID,
@@ -1641,21 +1788,26 @@ void main()
             public bool isSkinned;
             public string name;
 
+            public bool isSelected = false, isHighlighted = false;
+
             //OGL
             int vb, ib, indexCount;
-            int mLoc, cLoc;
-            static int meshShader;
+            int mLoc, cLoc, SmLoc, ScLoc;
+            static int meshShader, selectionShader, highlightShader;
             static bool shaderInit = false;
-            Vector3 color;
+            public Vector3 color;
             public void InitDrawing()
             {
-                #region Mesh Shader
                 if (!shaderInit)
                 {
-                    #region Shader Strings
-                    //////////////////////////////////////////////////////
-                    string vs =
-        @"#version 420 core
+                    if (!shaderInit)
+                    {
+                        #region Mesh Shader
+
+                        #region Shader Strings
+                        //////////////////////////////////////////////////////
+                        string vs =
+            @"#version 420 core
 
 layout (location = 0) in vec3 positionIn;
 layout (location = 1) in vec2 uvIn;
@@ -1679,8 +1831,8 @@ void main()
     vs_out.normal = normalIn;
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
 }";
-                    string gs =
-        @"#version 420 core
+                        string gs =
+            @"#version 420 core
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
 
@@ -1726,9 +1878,9 @@ void main()
     EndPrimitive();
 }
 ";
-                    //////////////////////////////////////////////////////
-                    string fs =
-        @"#version 420 core
+                        //////////////////////////////////////////////////////
+                        string fs =
+            @"#version 420 core
 
 in GS_OUT {
 vec2 uv;
@@ -1744,48 +1896,171 @@ void main()
 {
     FragColor = texture(textureSampler, gs_out.uv) * (color * gs_out.lightStrength);
 }";
-                    //////////////////////////////////////////////////////
-                    #endregion
+                        //////////////////////////////////////////////////////
+                        #endregion
 
-                    int vao = GL.GenVertexArray();
-                    GL.BindVertexArray(vao);
+                        int vao = GL.GenVertexArray();
+                        GL.BindVertexArray(vao);
 
-                    int vertS, geomS, fragS;
-                    vertS = GL.CreateShader(ShaderType.VertexShader);
-                    GL.ShaderSource(vertS, vs);
-                    geomS = GL.CreateShader(ShaderType.GeometryShader);
-                    GL.ShaderSource(geomS, gs);
-                    fragS = GL.CreateShader(ShaderType.FragmentShader);
-                    GL.ShaderSource(fragS, fs);
+                        int vertS, geomS, fragS;
+                        vertS = GL.CreateShader(ShaderType.VertexShader);
+                        GL.ShaderSource(vertS, vs);
+                        geomS = GL.CreateShader(ShaderType.GeometryShader);
+                        GL.ShaderSource(geomS, gs);
+                        fragS = GL.CreateShader(ShaderType.FragmentShader);
+                        GL.ShaderSource(fragS, fs);
 
-                    GL.CompileShader(vertS);
-                    string infoLogVert = GL.GetShaderInfoLog(vertS);
-                    if (infoLogVert != System.String.Empty)
-                        System.Console.WriteLine(infoLogVert);
-                    GL.CompileShader(geomS);
-                    string infoLogGeom = GL.GetShaderInfoLog(geomS);
-                    if (infoLogGeom != System.String.Empty)
-                        System.Console.WriteLine(infoLogGeom);
-                    GL.CompileShader(fragS);
-                    string infoLogFrag = GL.GetShaderInfoLog(fragS);
-                    if (infoLogFrag != System.String.Empty)
-                        System.Console.WriteLine(infoLogFrag);
+                        GL.CompileShader(vertS);
+                        string infoLogVert = GL.GetShaderInfoLog(vertS);
+                        if (infoLogVert != System.String.Empty)
+                            System.Console.WriteLine(infoLogVert);
+                        GL.CompileShader(geomS);
+                        string infoLogGeom = GL.GetShaderInfoLog(geomS);
+                        if (infoLogGeom != System.String.Empty)
+                            System.Console.WriteLine(infoLogGeom);
+                        GL.CompileShader(fragS);
+                        string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                        if (infoLogFrag != System.String.Empty)
+                            System.Console.WriteLine(infoLogFrag);
 
-                    meshShader = GL.CreateProgram();
-                    GL.AttachShader(meshShader, vertS);
-                    GL.AttachShader(meshShader, fragS);
-                    GL.AttachShader(meshShader, geomS);
-                    GL.LinkProgram(meshShader);
-                    GL.UseProgram(meshShader);
+                        meshShader = GL.CreateProgram();
+                        GL.AttachShader(meshShader, vertS);
+                        GL.AttachShader(meshShader, fragS);
+                        GL.AttachShader(meshShader, geomS);
+                        GL.LinkProgram(meshShader);
+                        GL.UseProgram(meshShader);
 
+                        #endregion
+                    }
+                    if (!shaderInit)
+                    {
+                        #region Selection Shader
+
+                        #region Shader Strings
+                        //////////////////////////////////////////////////////
+                        string vs =
+            @"#version 420 core
+
+layout (location = 0) in vec3 positionIn;
+layout (location = 1) in vec2 uvIn;
+layout (location = 2) in vec3 normalIn;
+
+layout(std140, binding = 0) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+uniform mat4 modelMatrix;
+
+void main()
+{
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(positionIn, 1.0);
+}";
+                        //////////////////////////////////////////////////////
+                        string fs =
+            @"#version 420 core
+
+uniform vec4 color;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = color;
+}";
+                        //////////////////////////////////////////////////////
+                        #endregion
+
+                        int vertS, fragS;
+                        vertS = GL.CreateShader(ShaderType.VertexShader);
+                        GL.ShaderSource(vertS, vs);
+                        fragS = GL.CreateShader(ShaderType.FragmentShader);
+                        GL.ShaderSource(fragS, fs);
+
+                        GL.CompileShader(vertS);
+                        string infoLogVert = GL.GetShaderInfoLog(vertS);
+                        if (infoLogVert != System.String.Empty)
+                            System.Console.WriteLine(infoLogVert);
+                        GL.CompileShader(fragS);
+                        string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                        if (infoLogFrag != System.String.Empty)
+                            System.Console.WriteLine(infoLogFrag);
+
+                        selectionShader = GL.CreateProgram();
+                        GL.AttachShader(selectionShader, vertS);
+                        GL.AttachShader(selectionShader, fragS);
+                        GL.LinkProgram(selectionShader);
+                        #endregion
+                    }
+                    if (!shaderInit)
+                    {
+                        #region Highlight Shader
+
+                        #region Shader Strings
+                        //////////////////////////////////////////////////////
+                        string vs =
+            @"#version 420 core
+
+layout (location = 0) in vec3 positionIn;
+layout (location = 1) in vec2 uvIn;
+layout (location = 2) in vec3 normalIn;
+
+layout(std140, binding = 0) uniform GlobalMatrices
+{
+    mat4 projectionMatrix;
+    mat4 viewMatrix;
+};
+uniform mat4 modelMatrix;
+
+void main()
+{
+
+}";
+                        //////////////////////////////////////////////////////
+                        string fs =
+            @"#version 420 core
+
+uniform vec4 color;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(.45, .12, .12, 1.0);
+}";
+                        //////////////////////////////////////////////////////
+                        #endregion
+
+                        int vertS, fragS;
+                        vertS = GL.CreateShader(ShaderType.VertexShader);
+                        GL.ShaderSource(vertS, vs);
+                        fragS = GL.CreateShader(ShaderType.FragmentShader);
+                        GL.ShaderSource(fragS, fs);
+
+                        GL.CompileShader(vertS);
+                        string infoLogVert = GL.GetShaderInfoLog(vertS);
+                        if (infoLogVert != System.String.Empty)
+                            System.Console.WriteLine(infoLogVert);
+                        GL.CompileShader(fragS);
+                        string infoLogFrag = GL.GetShaderInfoLog(fragS);
+                        if (infoLogFrag != System.String.Empty)
+                            System.Console.WriteLine(infoLogFrag);
+
+                        highlightShader = GL.CreateProgram();
+                        GL.AttachShader(highlightShader, vertS);
+                        GL.AttachShader(highlightShader, fragS);
+                        GL.LinkProgram(highlightShader);
+                        #endregion
+                    }
                     shaderInit = true;
                 }
-                #endregion
 
                 mLoc = GL.GetUniformLocation(meshShader, "modelMatrix");
                 cLoc = GL.GetUniformLocation(meshShader, "color");
                 GL.UniformBlockBinding(meshShader, GL.GetUniformBlockIndex(meshShader, "GlobalMatrices"), 0);
-                
+                SmLoc = GL.GetUniformLocation(selectionShader, "modelMatrix");
+                ScLoc = GL.GetUniformLocation(selectionShader, "color");
+                GL.UniformBlockBinding(meshShader, GL.GetUniformBlockIndex(selectionShader, "GlobalMatrices"), 0);
+                GL.UniformBlockBinding(meshShader, GL.GetUniformBlockIndex(highlightShader, "GlobalMatrices"), 0);
+
                 vb = GL.GenBuffer();
                 ib = GL.GenBuffer();
                 
@@ -1800,12 +2075,15 @@ void main()
                 indexCount = indices.Count;
 
                 UpdateModelMatrix();
-                color = new Vector3((float)random.NextDouble(), (float)random.NextDouble(), (float)random.NextDouble());
+                byte[] rgb = new byte[3];
+                random.NextBytes(rgb);
+                color = new Vector3((float)rgb[0] / (float)255, (float)rgb[1] / (float)255, (float)rgb[2] / (float)255);
             }
             public void Draw()
             {
+                if (isSelected) return;
+
                 GL.UseProgram(meshShader);
-                
                 GL.UniformMatrix4(mLoc, false, ref modelMatrix);
 
                 GL.BindBuffer(BufferTarget.ArrayBuffer, vb);
@@ -1817,6 +2095,7 @@ void main()
                 GL.EnableVertexAttribArray(1);
                 GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf(new Mesh.Vertex()), Marshal.SizeOf(new SystemHalf.Half()) * 5); //normal
                 GL.EnableVertexAttribArray(2);
+
 
                 if (materialID > -1)
                 {
@@ -1834,6 +2113,30 @@ void main()
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 
                 GL.UseProgram(0);
+            }
+            public void DrawFlat()
+            {
+                GL.UseProgram(selectionShader);
+
+                GL.UniformMatrix4(SmLoc, false, ref modelMatrix);
+
+                GL.BindBuffer(BufferTarget.ArrayBuffer, vb);
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
+
+                GL.VertexAttribPointer(0, 3, VertexAttribPointerType.HalfFloat, false, Marshal.SizeOf(new Mesh.Vertex()), 0);  //pos
+                GL.EnableVertexAttribArray(0);
+
+                GL.Uniform4(ScLoc, new Vector4(color, 1));
+
+                GL.DrawElements(PrimitiveType.Triangles, indexCount, DrawElementsType.UnsignedInt, 0);
+                GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+
+                GL.UseProgram(0);
+            }
+            public void DrawHighlight()
+            {
+
             }
 
             //misc
