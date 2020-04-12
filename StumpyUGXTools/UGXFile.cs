@@ -4,12 +4,15 @@ using System.IO;
 using System.Text;
 using System.Linq;
 using SystemHalf;
-using Assimp;
+using OpenTK;
+using OpenTK.Graphics.OpenGL;
 using MiscUtil.Conversion;
 using CRC;
 using static Program;
 using static StumpyUGXTools.Editor;
 using Mesh = StumpyUGXTools.Editor.Mesh;
+using Bone = StumpyUGXTools.Editor.Bone;
+using Half = SystemHalf.Half;
 
 namespace StumpyUGXTools
 {
@@ -335,7 +338,6 @@ namespace StumpyUGXTools
 
         public long[] subDataCount = new long[6];
         public long[] subDataOffset = new long[6];
-        public string[] meshNames;
 
         public void InitMeshEditing()
         {
@@ -505,6 +507,69 @@ namespace StumpyUGXTools
                 meshes.Add(m);
             }
             return meshes;
+        }
+        public List<Bone> GetBones()
+        {
+            List<Bone> bones = new List<Bone>();
+
+            for(int i = 0; i < subDataCount[1]; i++)
+            {
+                Bone b = new Bone();
+                Console.WriteLine(subDataOffset[1]);
+                int loc = (int)subDataOffset[1] + (i*80) + 4;
+                float m11 = BitConverter.ToSingle(cachedData.GetRange(loc + 4, 4).ToArray(), 0);
+                float m12 = BitConverter.ToSingle(cachedData.GetRange(loc + 8, 4).ToArray(), 0);
+                float m13 = BitConverter.ToSingle(cachedData.GetRange(loc + 12, 4).ToArray(), 0);
+                float m14 = BitConverter.ToSingle(cachedData.GetRange(loc + 16, 4).ToArray(), 0);
+
+                float m21 = BitConverter.ToSingle(cachedData.GetRange(loc + 20, 4).ToArray(), 0);
+                float m22 = BitConverter.ToSingle(cachedData.GetRange(loc + 24, 4).ToArray(), 0);
+                float m23 = BitConverter.ToSingle(cachedData.GetRange(loc + 28, 4).ToArray(), 0);
+                float m24 = BitConverter.ToSingle(cachedData.GetRange(loc + 32, 4).ToArray(), 0);
+
+                float m31 = BitConverter.ToSingle(cachedData.GetRange(loc + 36, 4).ToArray(), 0);
+                float m32 = BitConverter.ToSingle(cachedData.GetRange(loc + 40, 4).ToArray(), 0);
+                float m33 = BitConverter.ToSingle(cachedData.GetRange(loc + 44, 4).ToArray(), 0);
+                float m34 = BitConverter.ToSingle(cachedData.GetRange(loc + 48, 4).ToArray(), 0);
+
+                float m41 = BitConverter.ToSingle(cachedData.GetRange(loc + 52, 4).ToArray(), 0);
+                float m42 = BitConverter.ToSingle(cachedData.GetRange(loc + 56, 4).ToArray(), 0);
+                float m43 = BitConverter.ToSingle(cachedData.GetRange(loc + 60, 4).ToArray(), 0);
+                float m44 = BitConverter.ToSingle(cachedData.GetRange(loc + 64, 4).ToArray(), 0);
+                Console.WriteLine(m11 + " " + m12 + " " + m13 + " " + m14);
+                Console.WriteLine(m21 + " " + m22 + " " + m23 + " " + m24);
+                Console.WriteLine(m31 + " " + m32 + " " + m33 + " " + m34);
+                Console.WriteLine(m41 + " " + m42 + " " + m43 + " " + m44);
+                Console.WriteLine();
+
+                Matrix4 m = new Matrix4();
+
+                m.M11 = m11;
+                m.M12 = m12;
+                m.M13 = m13;
+                m.M14 = m14;
+
+                m.M21 = m21;
+                m.M22 = m22;
+                m.M23 = m23;
+                m.M24 = m24;
+
+                m.M31 = m31;
+                m.M32 = m32;
+                m.M33 = m33;
+                m.M34 = m34;
+
+                m.M41 = m41;
+                m.M42 = m42;
+                m.M43 = m43;
+                m.M44 = m44;
+
+                b.boneMatrix = m.Inverted();
+
+                bones.Add(b);
+            }
+            Console.WriteLine(Matrix4.Identity * Matrix4.CreateTranslation(3, 2, 1));
+            return bones;
         }
         #endregion
     }
