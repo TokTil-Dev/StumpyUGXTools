@@ -515,7 +515,6 @@ namespace StumpyUGXTools
             for(int i = 0; i < subDataCount[1]; i++)
             {
                 Bone b = new Bone();
-                Console.WriteLine(subDataOffset[1]);
                 int loc = (int)subDataOffset[1] + (i*80) + 4;
                 float m11 = BitConverter.ToSingle(cachedData.GetRange(loc + 4, 4).ToArray(), 0);
                 float m12 = BitConverter.ToSingle(cachedData.GetRange(loc + 8, 4).ToArray(), 0);
@@ -539,13 +538,6 @@ namespace StumpyUGXTools
 
                 b.parent = BitConverter.ToInt32(cachedData.GetRange(loc + 68, 4).ToArray(), 0);
                 b.name = Utils.GetStringFromNullTerminatedByteArray(cachedData.ToArray(), BitConverter.ToInt32(cachedData.GetRange(loc - 4, 4).ToArray(), 0));
-
-                //Console.WriteLine(b.name);
-                //Console.WriteLine(m11 + " " + m12 + " " + m13 + " " + m14);
-                //Console.WriteLine(m21 + " " + m22 + " " + m23 + " " + m24);
-                //Console.WriteLine(m31 + " " + m32 + " " + m33 + " " + m34);
-                //Console.WriteLine(m41 + " " + m42 + " " + m43 + " " + m44);
-                //Console.WriteLine();
 
                 Matrix4 m = new Matrix4();
 
