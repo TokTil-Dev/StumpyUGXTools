@@ -536,11 +536,16 @@ namespace StumpyUGXTools
                 float m42 = BitConverter.ToSingle(cachedData.GetRange(loc + 56, 4).ToArray(), 0);
                 float m43 = BitConverter.ToSingle(cachedData.GetRange(loc + 60, 4).ToArray(), 0);
                 float m44 = BitConverter.ToSingle(cachedData.GetRange(loc + 64, 4).ToArray(), 0);
-                Console.WriteLine(m11 + " " + m12 + " " + m13 + " " + m14);
-                Console.WriteLine(m21 + " " + m22 + " " + m23 + " " + m24);
-                Console.WriteLine(m31 + " " + m32 + " " + m33 + " " + m34);
-                Console.WriteLine(m41 + " " + m42 + " " + m43 + " " + m44);
-                Console.WriteLine();
+
+                b.parent = BitConverter.ToInt32(cachedData.GetRange(loc + 68, 4).ToArray(), 0);
+                b.name = Utils.GetStringFromNullTerminatedByteArray(cachedData.ToArray(), BitConverter.ToInt32(cachedData.GetRange(loc - 4, 4).ToArray(), 0));
+
+                //Console.WriteLine(b.name);
+                //Console.WriteLine(m11 + " " + m12 + " " + m13 + " " + m14);
+                //Console.WriteLine(m21 + " " + m22 + " " + m23 + " " + m24);
+                //Console.WriteLine(m31 + " " + m32 + " " + m33 + " " + m34);
+                //Console.WriteLine(m41 + " " + m42 + " " + m43 + " " + m44);
+                //Console.WriteLine();
 
                 Matrix4 m = new Matrix4();
 
@@ -568,7 +573,6 @@ namespace StumpyUGXTools
 
                 bones.Add(b);
             }
-            Console.WriteLine(Matrix4.Identity * Matrix4.CreateTranslation(3, 2, 1));
             return bones;
         }
         #endregion

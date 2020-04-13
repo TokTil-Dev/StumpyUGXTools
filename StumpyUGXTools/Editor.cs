@@ -299,6 +299,7 @@ namespace StumpyUGXTools
                     UGXbones.Clear();
                     materialEditorTab.Clear();
                     meshEditorTab.ClearUGXTree();
+                    meshEditorTab.ClearUGXBoneTree();
                     f.fileName = Path.GetFileNameWithoutExtension(path);
                     f.InitTextureEditing();
                     f.InitMeshEditing();
@@ -315,6 +316,7 @@ namespace StumpyUGXTools
                     editorSelecter.SelectedIndex = 0;
                     materialEditorTab.SetupPathView();
                     meshEditorTab.PopulateUGXTree();
+                    meshEditorTab.PopulateUGXBoneTree();
                     LoadDiffuseTextures();
                     viewport.viewport.Invalidate();
                     return 1;
@@ -357,6 +359,7 @@ namespace StumpyUGXTools
                 mesh.isSkinned = false;
                 mesh.vertexSize = 24;
                 mesh.name = asset.Meshes[i].Name;
+                if (mesh.name == "") mesh.name = "Mesh " + (i + 1);
 
                 //collet vertices for this mesh
                 for (int ve = 0; ve < asset.Meshes[i].VertexCount; ve++)
@@ -841,7 +844,7 @@ namespace StumpyUGXTools
 
             public MeshEditor() : base()
             {
-                int xSpace = 5;
+                int xSpace = 1;
                 tab.Text = "Mesh Editor";
 
                 ugxMeshTree.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
@@ -860,19 +863,22 @@ namespace StumpyUGXTools
                 ugxBoneTree.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
                 ugxBoneTree.Font = new Font("Microsoft Sans Serif", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
                 ugxBoneTree.ItemHeight = 15;
-                ugxBoneTree.Location = new Point(editor.EditorToolsLeftMargin, 50 + ugxMeshTree.Height + 9);
+                ugxBoneTree.Location = new Point(editor.EditorToolsLeftMargin, 50 + ugxMeshTree.Height - 1);
                 ugxBoneTree.Name = "ugxBoneList";
                 ugxBoneTree.Size = new Size((editor.EditorToolSideWindowWidth / 2) - (xSpace), 200);
                 ugxBoneTree.TabIndex = 11;
                 ugxBoneTree.HideSelection = false;
                 ugxBoneTree.DrawMode = TreeViewDrawMode.OwnerDrawText;
-                
+                ugxBoneTree.DrawNode += new DrawTreeNodeEventHandler(DrawNode);
+                ugxBoneTree.BeforeSelect += new TreeViewCancelEventHandler(BeforeBoneNodeSelect);
+                ugxBoneTree.AfterSelect += new TreeViewEventHandler(AfterBoneNodeSelect);
+
                 fbxMeshTree.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-                fbxMeshTree.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+                fbxMeshTree.Font = new Font("Microsoft Sans Serif", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
                 fbxMeshTree.ItemHeight = 15;
                 fbxMeshTree.Location = new Point(editor.EditorToolsLeftMargin + (editor.EditorToolSideWindowWidth / 2) + (xSpace), 50);
                 fbxMeshTree.Name = "fbxMeshList";
-                fbxMeshTree.Size = new Size((editor.EditorToolSideWindowWidth / 2) - (xSpace), editor.Height - 301 + 9);
+                fbxMeshTree.Size = new Size((editor.EditorToolSideWindowWidth / 2) - (xSpace), editor.Height - 501);
                 fbxMeshTree.TabIndex = 13;
                 fbxMeshTree.HideSelection = false;
             }
@@ -983,9 +989,9 @@ namespace StumpyUGXTools
                 private void UpdateName()
                 {
                     string newName = "";
-                    if(prefix != "") { newName += "(" + prefix + ") "; }
+                    if (prefix != "") { newName += "(" + prefix + ") "; }
                     newName += name;
-                    if(suffix != "") { newName += " (" + suffix + ")"; }
+                    if (suffix != "") { newName += " (" + suffix + ")"; }
                     treeNode.Text = newName;
                 }
 
@@ -993,37 +999,55 @@ namespace StumpyUGXTools
                 private TreeNode treeNode = new TreeNode();
                 public int meshIndex = -1;
             }
-            
+            public class UGXBoneNode
+            {
+                public void SetParent(UGXBoneNode bn)
+                {
+                    bn.children.Add(this);
+                    bn.treeNode.Nodes.Add(treeNode);
+                }
+                public TreeNode treeNode = new TreeNode();
+                public int boneListIndex = -1;
+                public List<UGXBoneNode> children = new List<UGXBoneNode>();
+            }
+
+            //ugx meshes
+            public UGXRootNode rn;
             void DrawNode(object o, DrawTreeNodeEventArgs e)
             {
                 e.DrawDefault = true;
             }
-
-            UGXRootNode rn;
             void BeforeUGXNodeSelect(object o, TreeViewCancelEventArgs e)
             {
                 if (ugxMeshTree.SelectedNode != null) ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    m.isHighlighted = false;
+                }
                 foreach (Mesh m in editor.imports)
                 {
                     m.isHighlighted = false;
+                }
+                foreach (Bone b in editor.UGXbones)
+                {
+                    b.isSelected = false;
                 }
             }
             void AfterUGXNodeSelect(object o, TreeViewEventArgs e)
             {
                 e.Node.ForeColor = SystemColors.HighlightText;
-                for(int i = 0; i < rn.children.Count; i++)
+                for (int i = 0; i < rn.children.Count; i++)
                 {
                     if (i == ugxMeshTree.SelectedNode.Index) editor.UGXmeshes[i].isHighlighted = true;
                     if (i != ugxMeshTree.SelectedNode.Index || ugxMeshTree.SelectedNode.Parent == null) editor.UGXmeshes[i].isHighlighted = false;
                 }
                 editor.viewport.viewport.Invalidate();
             }
-
             public void PopulateUGXTree()
             {
                 if (editor.ugxLoaded == false) return;
                 rn = new UGXRootNode();
-                foreach(Mesh m in editor.UGXmeshes)
+                foreach (Mesh m in editor.UGXmeshes)
                 {
                     UGXMeshNode n = new UGXMeshNode();
                     n.SetName("Mesh " + (editor.UGXmeshes.IndexOf(m) + 1));
@@ -1035,6 +1059,80 @@ namespace StumpyUGXTools
             public void ClearUGXTree()
             {
                 ugxMeshTree.Nodes.Clear();
+            }
+
+            //ugx bones
+            public List<UGXBoneNode> boneNodes = new List<UGXBoneNode>();
+            void BeforeBoneNodeSelect(object o, TreeViewCancelEventArgs e)
+            {
+                foreach (Mesh m in editor.UGXmeshes)
+                {
+                    m.isHighlighted = false;
+                }
+                foreach (Mesh m in editor.imports)
+                {
+                    m.isHighlighted = false;
+                }
+                foreach (Bone b in editor.UGXbones)
+                {
+                    b.isSelected = false;
+                }
+            }
+            void AfterBoneNodeSelect(object o, TreeViewEventArgs e)
+            {
+                foreach(UGXBoneNode bn in boneNodes)
+                {
+                    if(bn.treeNode == ugxBoneTree.SelectedNode)
+                    {
+                        editor.UGXbones[bn.boneListIndex].isSelected = true;
+                    }
+                    editor.viewport.viewport.Invalidate();
+                }
+            }
+            public void PopulateUGXBoneTree()
+            {
+                int i = 0;
+                foreach (Bone b in editor.UGXbones)
+                {
+                    UGXBoneNode bn = new UGXBoneNode();
+                    bn.treeNode.Text = b.name;
+                    bn.treeNode.Tag = i; i++;
+                    if (b.parent == -1)
+                    {
+                        ugxBoneTree.Nodes.Add(bn.treeNode);
+                        rootBoneCMS.Items.Clear();
+                        showBonesMenuItem = new ToolStripMenuItem();
+                        showBonesMenuItem.Click += new EventHandler(ToggleShowBones);
+                        showBonesMenuItem.Text = "Show Skeleton";
+                        showBonesMenuItem.CheckOnClick = true;
+                        showBonesMenuItem.Checked = false;
+                        rootBoneCMS.Items.Add(showBonesMenuItem);
+                        ugxBoneTree.Nodes[0].ContextMenuStrip = rootBoneCMS;
+                    }
+                    if (b.parent >= 0)
+                    {
+                        bn.SetParent(boneNodes[b.parent]);
+                    }
+                    bn.boneListIndex = boneNodes.Count;
+                    boneNodes.Add(bn);
+                }
+                i = 0;
+            }
+            public void ClearUGXBoneTree()
+            {
+                if (boneNodes.Count > 0) ugxBoneTree.Nodes.Remove(boneNodes[0].treeNode);
+                boneNodes.Clear();
+
+                editor.viewport.drawSkeleton = false;
+            }
+
+            ContextMenuStrip rootBoneCMS = new ContextMenuStrip();
+            ToolStripMenuItem showBonesMenuItem;
+            void ToggleShowBones(object o, EventArgs e)
+            {
+                if (editor.viewport.drawSkeleton == false) { editor.viewport.drawSkeleton = true; }
+                else if (editor.viewport.drawSkeleton == true) { editor.viewport.drawSkeleton = false; }
+                editor.viewport.viewport.Invalidate();
             }
         }
         public class MaterialEditor : EditorTab
@@ -1258,8 +1356,8 @@ namespace StumpyUGXTools
             Matrix4 projectionMatrix;
 
             public int UBO;
-            public int selectionFBO, selColorAtt, selDepthAtt;
-            public int highlightFBO, hglColorAtt, hglDepthAtt;
+            public int meshSelectionFBO, meshSelColorAtt, meshSelDepthAtt;
+            public int boneSelectionFBO, boneSelColorAtt, boneSelDepthAtt;
 
             public void InitViewport()
             {
@@ -1321,38 +1419,38 @@ namespace StumpyUGXTools
 
                 GL.Enable(EnableCap.DepthTest);
                 GL.Enable(EnableCap.StencilTest);
-
-                selectionFBO = GL.GenFramebuffer();
-                selColorAtt = GL.GenTexture();
-                selDepthAtt = GL.GenRenderbuffer();
                 GL.Enable(EnableCap.Texture2D);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
-                GL.BindTexture(TextureTarget.Texture2D, selColorAtt);
-                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, viewport.Width, viewport.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, selColorAtt, 0);
 
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, selDepthAtt);
+                meshSelectionFBO = GL.GenFramebuffer();
+                meshSelColorAtt = GL.GenTexture();
+                meshSelDepthAtt = GL.GenRenderbuffer();
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, meshSelectionFBO);
+                GL.BindTexture(TextureTarget.Texture2D, meshSelColorAtt);
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, viewport.Width, viewport.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, meshSelColorAtt, 0);
+
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, meshSelDepthAtt);
                 GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, viewport.Width, viewport.Height);
-                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, selDepthAtt);
+                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, meshSelDepthAtt);
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
 
 
-                highlightFBO = GL.GenFramebuffer();
-                hglColorAtt = GL.GenTexture();
-                hglDepthAtt = GL.GenRenderbuffer();
-                GL.Enable(EnableCap.Texture2D);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
-                GL.BindTexture(TextureTarget.Texture2D, hglColorAtt);
+                boneSelectionFBO = GL.GenFramebuffer();
+                boneSelColorAtt = GL.GenTexture();
+                boneSelDepthAtt = GL.GenRenderbuffer();
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, boneSelectionFBO);
+                GL.BindTexture(TextureTarget.Texture2D, boneSelColorAtt);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, viewport.Width, viewport.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, hglColorAtt, 0);
+                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, boneSelColorAtt, 0);
 
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, hglDepthAtt);
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, boneSelDepthAtt);
                 GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, viewport.Width, viewport.Height);
-                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, hglDepthAtt);
+                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, boneSelDepthAtt);
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             }
-            
+
             //viewport functions
+            public bool drawSkeleton = false;
             void viewport_Loop()
             { 
                 PollInputs();
@@ -1369,19 +1467,26 @@ namespace StumpyUGXTools
                 {
                     m.Draw();
                 }
-
-                GL.Disable(EnableCap.DepthTest);
-                foreach (Bone b in editor.UGXbones)
+                 
+                if (drawSkeleton)
                 {
-                    b.Draw();
+                    GL.Disable(EnableCap.DepthTest);
+                    foreach (Bone b in editor.UGXbones)
+                    {
+                        if(!b.isSelected) b.Draw();
+                    }
+                    foreach (Bone b in editor.UGXbones)
+                    {
+                        if (b.isSelected) b.Draw();
+                    }
+                    GL.Enable(EnableCap.DepthTest);
                 }
-                GL.Enable(EnableCap.DepthTest);
 
                 viewport.SwapBuffers();
 
 
-                //draw color id to selection buffer
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+                //draw color id to selection buffers
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, meshSelectionFBO);
                 GL.ClearColor(0f, 0f, 0f, 1);
                 GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
                 foreach (Mesh m in editor.UGXmeshes)
@@ -1391,6 +1496,19 @@ namespace StumpyUGXTools
                 foreach (Mesh m in editor.imports)
                 {
                     m.DrawFlat();
+                }
+                
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, boneSelectionFBO);
+                GL.ClearColor(0f, 0f, 0f, 1);
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+                if (drawSkeleton)
+                {
+                    foreach (Bone b in editor.UGXbones)
+                    {
+                        b.drawingSelectionColors = true;
+                        b.Draw();
+                        b.drawingSelectionColors = false;
+                    }
                 }
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             }
@@ -1446,12 +1564,17 @@ namespace StumpyUGXTools
             {
                 if (!fauxFocus) { fauxFocus = true; return; }
                 int pixelData = 0;
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, selectionFBO);
+
+                if (e.Button == MouseButtons.Left) GL.BindFramebuffer(FramebufferTarget.Framebuffer, meshSelectionFBO);
+                if (e.Button == MouseButtons.Right) GL.BindFramebuffer(FramebufferTarget.Framebuffer, boneSelectionFBO);
                 GL.ReadPixels(e.X, viewport.Height - e.Y, 1, 1, PixelFormat.Bgra, PixelType.UnsignedByte, ref pixelData);
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
                 byte r = Color.FromArgb(pixelData).R;
                 byte g = Color.FromArgb(pixelData).G;
                 byte b = Color.FromArgb(pixelData).B;
+                Vector3 pixelColor = new Vector3((float)r / (float)255, (float)g / (float)255, (float)b / (float)255);
+                Console.WriteLine(pixelColor);
 
                 if (r == 0 && g == 0 && b == 0)
                 {
@@ -1465,25 +1588,71 @@ namespace StumpyUGXTools
                     {
                         m.isHighlighted = false;
                     }
+                    foreach (Bone bone in editor.UGXbones)
+                    {
+                        bone.isSelected = false;
+                    }
+                    return;
+                } //deselect all
+
+                //selecting mesh
+                if (e.Button == MouseButtons.Left)
+                {
+                    editor.meshEditorTab.ugxBoneTree.SelectedNode = null;
+                    foreach (Bone bone in editor.UGXbones)
+                    {
+                        bone.isSelected = false;
+                    }
+
+                    foreach (Mesh m in editor.imports)
+                    {
+                        if (m.color == pixelColor)
+                        {
+                            m.isHighlighted = true;
+                        }
+                        else m.isHighlighted = false;
+                    }
+                    foreach (Mesh m in editor.UGXmeshes)
+                    {
+                        if (m.color == pixelColor)
+                        {
+                            editor.meshEditorTab.ugxMeshTree.SelectedNode = editor.meshEditorTab.ugxMeshTree.Nodes[0].Nodes[editor.UGXmeshes.IndexOf(m)];
+                            m.isHighlighted = true;
+                        }
+                        else m.isHighlighted = false;
+                    }
                     return;
                 }
 
-                Vector3 pixelColor = new Vector3((float)r / (float)255, (float)g / (float)255, (float)b / (float)255);
-                foreach (Mesh m in editor.imports)
+                //selecting bone
+                if (e.Button == MouseButtons.Right)
                 {
-                    if (m.color == pixelColor) m.isHighlighted = true;
-                    else m.isHighlighted = false;
-                }
-                foreach (Mesh m in editor.UGXmeshes)
-                {
-                    if (m.color == pixelColor)
+                    foreach(Bone bone in editor.UGXbones)
                     {
-                        editor.meshEditorTab.ugxMeshTree.SelectedNode = editor.meshEditorTab.ugxMeshTree.Nodes[0].Nodes[editor.UGXmeshes.IndexOf(m)];
-                        m.isHighlighted = true;
+                        if (bone.color == pixelColor)
+                        {
+                            int i = editor.UGXbones.IndexOf(bone);
+                            foreach(MeshEditor.UGXBoneNode bn in editor.meshEditorTab.boneNodes)
+                            {
+                                if ((int)bn.treeNode.Tag == i) editor.meshEditorTab.ugxBoneTree.SelectedNode = bn.treeNode;
+                            }
+                            bone.isSelected = true;
+                        }
+                        else bone.isSelected = false;
                     }
-                    else m.isHighlighted = false;
+                    foreach(Mesh m in editor.UGXmeshes)
+                    {
+                        if (editor.meshEditorTab.ugxMeshTree.SelectedNode != null) editor.meshEditorTab.ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
+                        editor.meshEditorTab.ugxMeshTree.SelectedNode = null;
+                        m.isHighlighted = false;
+                    }
+                    foreach (Mesh m in editor.imports)
+                    {
+                        editor.meshEditorTab.fbxMeshTree.SelectedNode = null;
+                        m.isHighlighted = false;
+                    }
                 }
-
+                
                 fauxFocus = true;
             }
 
@@ -2254,14 +2423,16 @@ void main()
             //}
 
             //misc
-            static Random random = new Random();
         }
         public class Bone
         {
             public Matrix4 boneMatrix;
+            public int parent;
             public string name;
-            int vb, ib, mLoc;
+            int vb, ib, mLoc, cLoc;
             static int boneShader; static bool init = false;
+            public bool isSelected = false, drawingSelectionColors = false;
+            public Vector3 color;
             public void InitDrawing()
             {
                 if (!init)
@@ -2330,7 +2501,7 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(.8f, .8f, 1.0f, 1.0f);
+    FragColor = color;
 }";
                     //////////////////////////////////////////////////////
                     #endregion
@@ -2403,12 +2574,33 @@ void main()
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 
                 mLoc = GL.GetUniformLocation(boneShader, "modelMatrix");
+                cLoc = GL.GetUniformLocation(boneShader, "color");
                 GL.UniformBlockBinding(boneShader, GL.GetUniformBlockIndex(boneShader, "GlobalMatrices"), 0);
+
+                byte[] rgb = new byte[3];
+                random.NextBytes(rgb);
+                color = new Vector3((float)rgb[0] / (float)255, (float)rgb[1] / (float)255, (float)rgb[2] / (float)255);
             }
             public void Draw()
             {
                 GL.UseProgram(boneShader);
                 GL.UniformMatrix4(mLoc, false, ref boneMatrix);
+
+                if (!drawingSelectionColors)
+                {
+                    if (isSelected)
+                    {
+                        GL.Uniform4(cLoc, new Vector4(.25f, 1.0f, .25f, 1.0f));
+                    }
+                    else
+                    {
+                        GL.Uniform4(cLoc, new Vector4(.8f, .8f, 1.0f, 1.0f));
+                    }
+                }
+                else if(drawingSelectionColors)
+                {
+                    GL.Uniform4(cLoc, new Vector4(color, 1.0f));
+                }
 
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, ib);
                 GL.BindBuffer(BufferTarget.ArrayBuffer, vb);
