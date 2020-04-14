@@ -97,6 +97,7 @@ namespace StumpyUGXTools
     {
         public string fileName;
         public string filePath;
+        public ImportHint importHint;
 
         public UGXFile()
         {
@@ -109,6 +110,7 @@ namespace StumpyUGXTools
         public List<byte> ibData; int ibData_loc;     //index buffer       0x701
         public List<byte> matData; int matData_loc;    //materials          0x704
 
+        public enum ImportHint { HasBeenEdited, Fresh }
         public int Load(string path)
         {
             if (!File.Exists(path)) return -1;
@@ -129,6 +131,9 @@ namespace StumpyUGXTools
             vbData = fileData.GetRange(vbData_loc, bec.ToInt32(fileData.ToArray(), 92));
             ibData = fileData.GetRange(ibData_loc, bec.ToInt32(fileData.ToArray(), 116));
             matData = fileData.GetRange(matData_loc, bec.ToInt32(fileData.ToArray(), 140));
+
+            if (fileData.Count == header.Count + grannyData.Count + cachedData.Count + vbData.Count + ibData.Count + matData.Count) importHint = ImportHint.HasBeenEdited;
+            else importHint = ImportHint.Fresh;
 
             //get mesh info
             for (int i = 0; i < 6; i++)
@@ -351,6 +356,8 @@ namespace StumpyUGXTools
         {
             if (meshIndexToReplace >= subDataCount[0]) return -1;
 
+            mesh.vertexSize = 24;
+            Console.WriteLine(mesh.boneID + " " + BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + (meshIndexToReplace * 152) + 12, 4).ToArray(), 0));
             int loc = (int)subDataOffset[0] + (meshIndexToReplace * 152);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.materialID), loc, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.boneID), loc + 12, 4);
@@ -360,15 +367,15 @@ namespace StumpyUGXTools
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.vertices.Count * mesh.vertexSize), loc + 28, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.vertexSize), loc + 32, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.vertices.Count), loc + 36, 4);
-
             List<byte> v = new List<byte>();
             if (mesh.vertexSize == 24)
             {
                 for (int i = 0; i < mesh.vertices.Count; i++)
                 {
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].x));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].y));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].z));
+                    Vector4 vec = new Vector4(mesh.vertices[i].x, mesh.vertices[i].y, mesh.vertices[i].z, 1);// * new Matrix4(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.X));
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Y));
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Z));
                     v.AddRange(SystemHalf.Half.GetBytes(1));
                     v.AddRange(BitConverter.GetBytes(mesh.vertices[i].nx));
                     v.AddRange(BitConverter.GetBytes(mesh.vertices[i].ny));
@@ -389,6 +396,7 @@ namespace StumpyUGXTools
         public List<Mesh> GetMeshes()
         {
             List<Mesh> meshes = new List<Mesh>();
+            Bone grannyRootBone = GetBones()[0];
 
             for(int i = 0; i < subDataCount[0]; i++)
             {
@@ -504,6 +512,7 @@ namespace StumpyUGXTools
                     v.v = 1 - v.v;
                     m.vertices.Add(v);
                 }
+                m.rootMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) * grannyRootBone.boneMatrix;
                 meshes.Add(m);
             }
             return meshes;
@@ -562,7 +571,7 @@ namespace StumpyUGXTools
                 m.M44 = m44;
 
                 b.boneMatrix = m.Inverted();
-
+                if (i == 0) Console.WriteLine(b.boneMatrix);
                 bones.Add(b);
             }
             return bones;
