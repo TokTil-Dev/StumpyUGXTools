@@ -512,7 +512,7 @@ namespace StumpyUGXTools
                     v.v = 1 - v.v;
                     m.vertices.Add(v);
                 }
-                m.rootMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) * grannyRootBone.boneMatrix;
+                m.rootMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1) * grannyRootBone.boneMatrix;
                 meshes.Add(m);
             }
             return meshes;
