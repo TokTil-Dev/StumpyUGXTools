@@ -301,7 +301,7 @@ namespace StumpyUGXTools
                 needsSetup = false;
             }
             
-            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art\\unsc\\infantry\\marine_01\\marine_01.ugx");
+            //DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art\\unsc\\infantry\\marine_01\\marine_01.ugx"); //stumpy debug
         }
         void EditorSelect(object o, EventArgs e)
         {
