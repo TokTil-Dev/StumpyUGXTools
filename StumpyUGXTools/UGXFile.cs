@@ -354,10 +354,10 @@ namespace StumpyUGXTools
         }
         public int ReplaceMesh(Mesh mesh, int meshIndexToReplace)
         {
+            Console.WriteLine("A");
             if (meshIndexToReplace >= subDataCount[0]) return -1;
 
             mesh.vertexSize = 24;
-            Console.WriteLine(mesh.boneID + " " + BitConverter.ToInt32(cachedData.GetRange((int)subDataOffset[0] + (meshIndexToReplace * 152) + 12, 4).ToArray(), 0));
             int loc = (int)subDataOffset[0] + (meshIndexToReplace * 152);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.materialID), loc, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.boneID), loc + 12, 4);
@@ -391,6 +391,7 @@ namespace StumpyUGXTools
                 ibData.AddRange(BitConverter.GetBytes((short)mesh.indices[i]));
             }
 
+            Console.WriteLine("B");
             return 1;
         }
         public List<Mesh> GetMeshes()
@@ -573,7 +574,6 @@ namespace StumpyUGXTools
                 b.boneMatrix = m.Inverted();
                 //if (i > 0) b.rootMatrix = bones[0].boneMatrix.Inverted();
                 //else b.rootMatrix = Matrix4.Identity.Inverted();
-                if (i == 0) Console.WriteLine(b.boneMatrix);
                 bones.Add(b);
             }
             return bones;
