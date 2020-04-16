@@ -370,7 +370,6 @@ namespace StumpyUGXTools
             if (!ugxLoaded) return;
             materialEditorTab.SaveMaterial();
             ugx.SaveNewMaterial();
-
             foreach(Mesh m in UGXmeshes)
             {
                 if(m.hasBeenModified)
@@ -378,7 +377,6 @@ namespace StumpyUGXTools
                     ugx.ReplaceMesh(m, UGXmeshes.IndexOf(m));
                 }
             }
-
             ugx.Save(ugx.filePath);
             LogOut("File saved.");
         }
@@ -437,6 +435,7 @@ namespace StumpyUGXTools
             materialDiffuseTextures.Clear();
             for (int i = 0; i < materialEditorTab.matData.Count; i++)
             {
+                Console.WriteLine(GL.GetError());
                 uint name = 65535;
                 TextureTarget t;
                 if (materialEditorTab.matData[i].hasValue[0])
@@ -496,6 +495,7 @@ namespace StumpyUGXTools
                     mn.SetName(mesh.name);
                     rn.AddChild(mn);
                     mn.meshIndex = imports.Count;
+                    mn.treeNode.Tag = imports.Count;
                     imports.Add(mesh);
                     
                 }
@@ -1095,7 +1095,7 @@ namespace StumpyUGXTools
                 {
                     treeNode.Text = s;
                 }
-                private TreeNode treeNode = new TreeNode();
+                public TreeNode treeNode = new TreeNode();
                 public int meshIndex = -1;
 
             }
@@ -1407,8 +1407,33 @@ namespace StumpyUGXTools
                 meshSclZ.Minimum = -1000m;
                 meshSclZ.Value = 1m;
                 meshSclZ.ValueChanged += new EventHandler(SetMeshSclZ);
+
+
+                replaceMesh = new Button();
+                replaceMesh.Location = new Point(11, 720 - 38);
+                replaceMesh.Size = new Size(editor.EditorToolSideWindowWidth, 30);
+                replaceMesh.Text = "Replace this mesh with selected import.";
+                replaceMesh.Click += new EventHandler(ReplaceMeshFunc);
+
+
+                matIDLabel = new Label();
+                matIDLabel.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + meshSclZ.Size.Width + 30, meshPosLabel.Location.Y);
+                matIDLabel.Size = new Size(75, 15);
+                matIDLabel.Text = "Material ID";
+
+                materialID = new NumericUpDown();
+                materialID.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + meshSclZ.Size.Width + 30, meshPosLabel.Location.Y + 15);
+                materialID.Size = new Size(75, 20);
+                materialID.DecimalPlaces = 0;
+                materialID.Maximum = 1000m;
+                materialID.Minimum = -1m;
+                materialID.Value = 0m;
+                materialID.ValueChanged += new EventHandler(SetMeshMatID);
             }
             //mesh editing
+            Button replaceMesh;
+            Label matIDLabel;
+            NumericUpDown materialID;
             Label meshPosLabel;
             NumericUpDown meshPosX;
             NumericUpDown meshPosY;
@@ -1425,8 +1450,6 @@ namespace StumpyUGXTools
             Mesh selectedMesh;
             public void SelectUGXMesh(Mesh selMesh)
             {
-                fbxMeshTree.SelectedNode = null;
-                ugxBoneTree.SelectedNode = null;
                 ugxMeshTree.SelectedNode = ugxMeshTree.Nodes[0].Nodes[editor.UGXmeshes.IndexOf(selMesh)];
                 SelectMeshForEditing(selMesh);
             }
@@ -1439,6 +1462,7 @@ namespace StumpyUGXTools
             {
                 selectedMesh = m;
                 selectedMesh.isHighlighted = true;
+                materialID.Value = selectedMesh.materialID;
                 meshPosX.Value = (decimal)selectedMesh.position.X;
                 meshPosY.Value = (decimal)selectedMesh.position.Y;
                 meshPosZ.Value = (decimal)selectedMesh.position.Z;
@@ -1449,6 +1473,10 @@ namespace StumpyUGXTools
                 meshSclY.Value = (decimal)selectedMesh.scale.Y;
                 meshSclZ.Value = (decimal)selectedMesh.scale.Z;
 
+                editor.Controls.Add(replaceMesh);
+                editor.Controls.Add(matIDLabel);
+                editor.Controls.Add(meshPosLabel);
+                editor.Controls.Add(materialID);
                 editor.Controls.Add(meshPosLabel);
                 editor.Controls.Add(meshPosX);
                 editor.Controls.Add(meshPosY);
@@ -1469,6 +1497,9 @@ namespace StumpyUGXTools
                     selectedMesh.isHighlighted = false;
                     selectedMesh = null;
                 }
+                editor.Controls.Remove(replaceMesh);
+                editor.Controls.Remove(matIDLabel);
+                editor.Controls.Remove(materialID);
                 editor.Controls.Remove(meshPosLabel);
                 editor.Controls.Remove(meshPosX);
                 editor.Controls.Remove(meshPosY);
@@ -1481,6 +1512,17 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(meshSclX);
                 editor.Controls.Remove(meshSclY);
                 editor.Controls.Remove(meshSclZ);
+            }
+            void ReplaceMeshFunc(object o, EventArgs e)
+            {
+                if (fbxMeshTree.SelectedNode != null && selectedMesh != null)
+                {
+                    ugx.ReplaceMesh(editor.imports[(int)fbxMeshTree.SelectedNode.Tag], ugxMeshTree.SelectedNode.Index);
+                    editor.UGXmeshes[ugxMeshTree.SelectedNode.Index] = editor.imports[(int)fbxMeshTree.SelectedNode.Tag];
+                    selectedMesh = editor.UGXmeshes[ugxMeshTree.SelectedNode.Index];
+                    SelectUGXMesh(selectedMesh);
+                    editor.viewport.viewport.Invalidate();
+                }
             }
             void SetMeshPosX(object o, EventArgs e)
             {
@@ -1535,6 +1577,14 @@ namespace StumpyUGXTools
                 selectedMesh.scale.Z = (Half)meshSclZ.Value;
                 selectedMesh.UpdateModelMatrix();
                 selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshMatID(object o, EventArgs e)
+            {
+                if ((int)materialID.Value >= editor.materialDiffuseTextures.Count) materialID.Value = editor.materialDiffuseTextures.Count - 1;
+                selectedMesh.materialID = (int)materialID.Value;
+                selectedMesh.hasBeenModified = true;
+                editor.viewport.viewport.Invalidate();
+                Console.WriteLine(selectedMesh.materialID);
             }
         }
         public class MaterialEditor : EditorTab
@@ -2472,6 +2522,26 @@ void main()
                 faceCount;
             public bool isSkinned;
             public string name;
+
+            public Mesh() { }
+            public Mesh(Mesh m)
+            {
+                vertices = m.vertices;
+                indices = m.indices;
+                vertexSize = m.vertexSize;
+                faceCount = m.faceCount;
+                materialID = m.materialID;
+                boneID = m.boneID;
+
+                name = m.name;
+                isSkinned = m.isSkinned;
+
+                isHighlighted = m.isHighlighted;
+                isEnabled = true;
+                isReferenceMesh = m.isReferenceMesh;
+
+                InitDrawing();
+            }
 
             //misc
             public bool isHighlighted = false;
