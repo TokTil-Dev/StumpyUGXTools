@@ -372,7 +372,7 @@ namespace StumpyUGXTools
             {
                 for (int i = 0; i < mesh.vertices.Count; i++)
                 {
-                    Vector4 vec = new Vector4(mesh.vertices[i].x, mesh.vertices[i].y, mesh.vertices[i].z, 1);// * new Matrix4(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
+                    Vector4 vec = new Vector4(mesh.vertices[i].x, mesh.vertices[i].y, mesh.vertices[i].z, 1) * mesh.modelMatrix;
                     v.AddRange(SystemHalf.Half.GetBytes((Half)vec.X));
                     v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Y));
                     v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Z));
@@ -571,6 +571,8 @@ namespace StumpyUGXTools
                 m.M44 = m44;
 
                 b.boneMatrix = m.Inverted();
+                //if (i > 0) b.rootMatrix = bones[0].boneMatrix.Inverted();
+                //else b.rootMatrix = Matrix4.Identity.Inverted();
                 if (i == 0) Console.WriteLine(b.boneMatrix);
                 bones.Add(b);
             }

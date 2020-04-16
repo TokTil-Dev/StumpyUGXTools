@@ -13,7 +13,7 @@ static class Program
 {
     public static Random random = new Random();
     public static BigEndianBitConverter bec = new BigEndianBitConverter();
-    public static string version = "1.0.0-pre";
+    public static string version = "1.0.0-pre0.1";
     public static Editor editor = new Editor();
 
     [STAThread]
