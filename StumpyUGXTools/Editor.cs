@@ -384,7 +384,7 @@ namespace StumpyUGXTools
         {
             //use assimp to load a model.
             AssimpContext imp = new AssimpContext();
-            Scene asset = imp.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.FindDegenerates | PostProcessSteps.FixInFacingNormals);
+            Scene asset = imp.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.FixInFacingNormals);
 
             List<Mesh> meshes = new List<Mesh>();
             //for each mesh in the imported file, collect vertices and indices.
@@ -393,10 +393,14 @@ namespace StumpyUGXTools
                 Mesh mesh = new Mesh();
                 mesh.vertices = new List<Mesh.Vertex>();
                 mesh.indices = new List<uint>();
-                mesh.isSkinned = false;
-                mesh.vertexSize = 24;
                 mesh.name = asset.Meshes[i].Name;
                 if (mesh.name == "") mesh.name = "Mesh " + (i + 1);
+
+                mesh.materialID = -1;
+                mesh.rigidBoneIndex = 0;
+                mesh.rigidOnly = true;
+                mesh.vertexSize = 24;
+
 
                 //collet vertices for this mesh
                 for (int ve = 0; ve < asset.Meshes[i].VertexCount; ve++)
@@ -421,6 +425,11 @@ namespace StumpyUGXTools
                     }
                     mesh.faceCount++;
                 }
+                mesh.faceCount = (mesh.indices.Count / 3) - mesh.indices.Count % 3;
+                mesh.vertexCount = mesh.vertices.Count;
+                Console.WriteLine("Verts " + mesh.vertexCount);
+                Console.WriteLine("Faces " + mesh.faceCount);
+                if (mesh.vertexCount > 65535) LogOut("Warning: Imported mesh " + mesh.name + " has " + mesh.vertexCount + " vertices, which exceeds the maximum safe limit of 65535.");
                 meshes.Add(mesh);
             }
 
@@ -1049,6 +1058,7 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(ugxBoneTree);
                 editor.Controls.Remove(fbxMeshTree);
                 editor.Controls.Remove(referenceBoneSelecter);
+                DeselectUGXMesh();
             }
 
             public class ImportRootNode
@@ -1455,7 +1465,11 @@ namespace StumpyUGXTools
             }
             public void DeselectUGXMesh()
             {
-                ugxMeshTree.SelectedNode = null;
+                if (ugxMeshTree.SelectedNode != null)
+                {
+                    ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
+                    ugxMeshTree.SelectedNode = null;
+                }
                 DeselectMesh();
             }
             void SelectMeshForEditing(Mesh m)
@@ -1512,13 +1526,16 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(meshSclX);
                 editor.Controls.Remove(meshSclY);
                 editor.Controls.Remove(meshSclZ);
+                editor.viewport.viewport.Invalidate();
             }
             void ReplaceMeshFunc(object o, EventArgs e)
             {
                 if (fbxMeshTree.SelectedNode != null && selectedMesh != null)
                 {
                     ugx.ReplaceMesh(editor.imports[(int)fbxMeshTree.SelectedNode.Tag], ugxMeshTree.SelectedNode.Index);
-                    editor.UGXmeshes[ugxMeshTree.SelectedNode.Index] = editor.imports[(int)fbxMeshTree.SelectedNode.Tag];
+                    editor.UGXmeshes[ugxMeshTree.SelectedNode.Index] = new Mesh(editor.imports[(int)fbxMeshTree.SelectedNode.Tag]);
+                    editor.UGXmeshes[ugxMeshTree.SelectedNode.Index].hasBeenModified = true;
+                    editor.UGXmeshes[ugxMeshTree.SelectedNode.Index].materialID = 0;
                     selectedMesh = editor.UGXmeshes[ugxMeshTree.SelectedNode.Index];
                     SelectUGXMesh(selectedMesh);
                     editor.viewport.viewport.Invalidate();
@@ -1584,7 +1601,6 @@ namespace StumpyUGXTools
                 selectedMesh.materialID = (int)materialID.Value;
                 selectedMesh.hasBeenModified = true;
                 editor.viewport.viewport.Invalidate();
-                Console.WriteLine(selectedMesh.materialID);
             }
         }
         public class MaterialEditor : EditorTab
@@ -2151,7 +2167,7 @@ namespace StumpyUGXTools
                 float radius = 0;
                 public void UpdateCamera()
                 {
-                    viewMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) * Matrix4.LookAt(position, target, new Vector3(0, 1, 0));
+                    viewMatrix = new Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1) * Matrix4.LookAt(position, target, new Vector3(0, 1, 0));
                     GL.BindBuffer(BufferTarget.UniformBuffer, editor.viewport.UBO);
                     GL.BufferSubData(BufferTarget.UniformBuffer, new IntPtr(Marshal.SizeOf(new Matrix4())), Marshal.SizeOf(new Matrix4()), ref viewMatrix);
                     GL.BindBuffer(BufferTarget.UniformBuffer, 0);
@@ -2515,12 +2531,18 @@ void main()
             }
             public List<Vertex> vertices = new List<Vertex>();
             public List<uint> indices = new List<uint>();
-            public int
+            public int //mesh params
                 materialID = -1,
-                boneID,
-                vertexSize,
-                faceCount;
-            public bool isSkinned;
+                accessoryIndex = -1,
+                maxBones = -1,
+                rigidBoneIndex = -1,
+                indexBufferOffsetInShorts = -1,
+                faceCount = -1,
+                vertexBufferOffsetInBytes = -1,
+                vertexBufferSizeInBytes = -1,
+                vertexSize = -1,
+                vertexCount = -1;
+            public bool rigidOnly = true;
             public string name;
 
             public Mesh() { }
@@ -2528,17 +2550,23 @@ void main()
             {
                 vertices = m.vertices;
                 indices = m.indices;
-                vertexSize = m.vertexSize;
-                faceCount = m.faceCount;
+
                 materialID = m.materialID;
-                boneID = m.boneID;
+                accessoryIndex = m.accessoryIndex;
+                maxBones = m.maxBones;
+                rigidBoneIndex = m.rigidBoneIndex;
+                indexBufferOffsetInShorts = m.indexBufferOffsetInShorts;
+                faceCount = m.faceCount;
+                vertexBufferOffsetInBytes = m.vertexBufferOffsetInBytes;
+                vertexBufferSizeInBytes = m.vertexBufferSizeInBytes;
+                vertexSize = m.vertexSize;
+                vertexCount = m.vertexCount;
+                rigidOnly = m.rigidOnly;
 
                 name = m.name;
-                isSkinned = m.isSkinned;
 
                 isHighlighted = m.isHighlighted;
                 isEnabled = true;
-                isReferenceMesh = m.isReferenceMesh;
 
                 InitDrawing();
             }
