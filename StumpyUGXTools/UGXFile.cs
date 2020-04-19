@@ -360,7 +360,7 @@ namespace StumpyUGXTools
             mesh.vertexSize = 24;
             int loc = (int)subDataOffset[0] + (meshIndexToReplace * 152);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.materialID), loc, 4);
-            cachedData.ReplaceRange(BitConverter.GetBytes(mesh.boneID), loc + 12, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(mesh.rigidBoneIndex), loc + 12, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(ibData.Count / 2), loc + 16, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.faceCount), loc + 20, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(vbData.Count), loc + 24, 4);
@@ -404,111 +404,103 @@ namespace StumpyUGXTools
                 Mesh m = new Mesh();
                 int loc = (int)subDataOffset[0] + (i * 152);
                 m.materialID = BitConverter.ToInt32(cachedData.GetRange(loc, 4).ToArray(), 0);
-                int accessoryIndex = BitConverter.ToInt32(cachedData.GetRange(loc + 4, 4).ToArray(), 0);
-                int maxBones = BitConverter.ToInt32(cachedData.GetRange(loc + 8, 4).ToArray(), 0);
-                m.boneID = BitConverter.ToInt32(cachedData.GetRange(loc + 12, 4).ToArray(), 0);
+                m.accessoryIndex = BitConverter.ToInt32(cachedData.GetRange(loc + 4, 4).ToArray(), 0);
+                m.maxBones = BitConverter.ToInt32(cachedData.GetRange(loc + 8, 4).ToArray(), 0);
+                m.rigidBoneIndex = BitConverter.ToInt32(cachedData.GetRange(loc + 12, 4).ToArray(), 0);
+                m.indexBufferOffsetInShorts = BitConverter.ToInt32(cachedData.GetRange(loc + 16, 4).ToArray(), 0);
                 m.faceCount = BitConverter.ToInt32(cachedData.GetRange(loc + 20, 4).ToArray(), 0);
-                int faceOffset = BitConverter.ToInt32(cachedData.GetRange(loc + 16, 4).ToArray(), 0);
-                int vertexOffset = BitConverter.ToInt32(cachedData.GetRange(loc + 24, 4).ToArray(), 0);
-                int verticesDataLength = BitConverter.ToInt32(cachedData.GetRange(loc + 28, 4).ToArray(), 0);
+                m.vertexBufferOffsetInBytes = BitConverter.ToInt32(cachedData.GetRange(loc + 24, 4).ToArray(), 0);
+                m.vertexBufferSizeInBytes = BitConverter.ToInt32(cachedData.GetRange(loc + 28, 4).ToArray(), 0);
                 m.vertexSize = BitConverter.ToInt32(cachedData.GetRange(loc + 32, 4).ToArray(), 0);
-                int vertexCount = BitConverter.ToInt32(cachedData.GetRange(loc + 36, 4).ToArray(), 0);
-                m.name = Utils.GetStringFromNullTerminatedByteArray(cachedData.ToArray(), BitConverter.ToInt32(cachedData.GetRange(loc + 56, 4).ToArray(), 0));
-
-                //Console.WriteLine("Bone:  " + m.boneID);
-                //Console.WriteLine("Face#: " + m.faceCount);
-                //Console.WriteLine("iOffs: " + faceOffset);
-                //Console.WriteLine("vOffs: " + vertexOffset);
-                //Console.WriteLine("vDatL: " + verticesDataLength);
-                //Console.WriteLine("vSize: " + m.vertexSize);
-                //Console.WriteLine("Vert#: " + vertexCount);
+                m.vertexCount = BitConverter.ToInt32(cachedData.GetRange(loc + 36, 4).ToArray(), 0);
+                m.rigidOnly = BitConverter.ToBoolean(cachedData.GetRange(loc + 124, 1).ToArray(), 0);
 
                 for (int j = 0; j < m.faceCount; j++)
                 {
-                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((faceOffset * 2) + (j * 6) + 0, 2).ToArray(), 0));
-                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((faceOffset * 2) + (j * 6) + 2, 2).ToArray(), 0));
-                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((faceOffset * 2) + (j * 6) + 4, 2).ToArray(), 0));
+                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((m.indexBufferOffsetInShorts * 2) + (j * 6) + 0, 2).ToArray(), 0));
+                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((m.indexBufferOffsetInShorts * 2) + (j * 6) + 2, 2).ToArray(), 0));
+                    m.indices.Add((uint)BitConverter.ToInt16(ibData.GetRange((m.indexBufferOffsetInShorts * 2) + (j * 6) + 4, 2).ToArray(), 0));
                 }
-                for(int k = 0; k < vertexCount; k++)
+                for(int k = 0; k < m.vertexCount; k++)
                 {
                     Mesh.Vertex v = new Mesh.Vertex();
 
                     if(m.vertexSize == 0x18)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 20, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 22, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 20, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 22, 2).ToArray(), 0);
                     }
                     if(m.vertexSize == 0x1c)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 20, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 22, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 20, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 22, 2).ToArray(), 0);
                     }
                     if(m.vertexSize == 0x20)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 28, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 30, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 28, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 30, 2).ToArray(), 0);
                     }
                     if (m.vertexSize == 0x24)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 32, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 34, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 32, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 34, 2).ToArray(), 0);
                     }
                     if (m.vertexSize == 0x28)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 32, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 34, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 32, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 34, 2).ToArray(), 0);
                     }
                     if (m.vertexSize == 0x2c)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 40, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 42, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 40, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 42, 2).ToArray(), 0);
                     }
                     if (m.vertexSize == 0x30)
                     {
-                        v.x = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 0, 2).ToArray(), 0);
-                        v.y = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 2, 2).ToArray(), 0);
-                        v.z = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 4, 2).ToArray(), 0);
-                        v.nx = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 8, 4).ToArray(), 0);
-                        v.ny = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 12, 4).ToArray(), 0);
-                        v.nz = BitConverter.ToSingle(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 16, 4).ToArray(), 0);
-                        v.u = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 40, 2).ToArray(), 0);
-                        v.v = Half.ToHalf(vbData.GetRange(vertexOffset + (k * m.vertexSize) + 42, 2).ToArray(), 0);
+                        v.x = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 0, 2).ToArray(), 0);
+                        v.y = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 2, 2).ToArray(), 0);
+                        v.z = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 4, 2).ToArray(), 0);
+                        v.nx = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 8, 4).ToArray(), 0);
+                        v.ny = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 12, 4).ToArray(), 0);
+                        v.nz = BitConverter.ToSingle(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 16, 4).ToArray(), 0);
+                        v.u = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 40, 2).ToArray(), 0);
+                        v.v = Half.ToHalf(vbData.GetRange(m.vertexBufferOffsetInBytes + (k * m.vertexSize) + 42, 2).ToArray(), 0);
                     }
                     v.v = 1 - v.v;
                     m.vertices.Add(v);
