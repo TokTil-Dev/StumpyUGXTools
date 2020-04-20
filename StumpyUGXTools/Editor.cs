@@ -297,11 +297,11 @@ namespace StumpyUGXTools
 
             if(needsSetup)
             {
-                textureReferencePathToolStripMenuItem_Click(null, null);
+                textureReferencePathToolStripMenuItem_Click(null, null); //pick texture reference path
                 needsSetup = false;
             }
-            
-            //DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\Extract\\art\\unsc\\infantry\\marine_01\\marine_01.ugx"); //stumpy debug
+
+            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\treadfl.ugx"); //stumpy debug
         }
         void EditorSelect(object o, EventArgs e)
         {
@@ -1269,7 +1269,7 @@ namespace StumpyUGXTools
                         ugxBoneTree.Nodes.Add(bn.treeNode);
                         rootBoneCMS.Items.Clear();
                         showBonesMenuItem = new ToolStripMenuItem();
-                        //showBonesMenuItem.Click += new EventHandler(ToggleShowBones); //uncomment to enable.
+                        showBonesMenuItem.Click += new EventHandler(ToggleShowBones);
                         showBonesMenuItem.Text = "Show Skeleton";
                         showBonesMenuItem.CheckOnClick = true;
                         showBonesMenuItem.Checked = false;
@@ -1440,7 +1440,7 @@ namespace StumpyUGXTools
                 materialID.Value = 0m;
                 materialID.ValueChanged += new EventHandler(SetMeshMatID);
             }
-            //mesh editing
+
             Button replaceMesh;
             Label matIDLabel;
             NumericUpDown materialID;

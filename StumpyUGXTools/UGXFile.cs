@@ -354,7 +354,6 @@ namespace StumpyUGXTools
         }
         public int ReplaceMesh(Mesh mesh, int meshIndexToReplace)
         {
-            Console.WriteLine("A");
             if (meshIndexToReplace >= subDataCount[0]) return -1;
 
             mesh.vertexSize = 24;
@@ -372,14 +371,15 @@ namespace StumpyUGXTools
             {
                 for (int i = 0; i < mesh.vertices.Count; i++)
                 {
-                    Vector4 vec = new Vector4(mesh.vertices[i].x, mesh.vertices[i].y, mesh.vertices[i].z, 1) * mesh.modelMatrix;
-                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.X));
-                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Y));
-                    v.AddRange(SystemHalf.Half.GetBytes((Half)vec.Z));
+                    Vector4 pos = new Vector4(mesh.vertices[i].x, mesh.vertices[i].y, mesh.vertices[i].z, 1) * mesh.modelMatrix;
+                    Vector4 nml = mesh.modelMatrix.ExtractRotation() * new Vector4(mesh.vertices[i].nx, mesh.vertices[i].ny, mesh.vertices[i].nz, 1);
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)pos.X));
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)pos.Y));
+                    v.AddRange(SystemHalf.Half.GetBytes((Half)pos.Z));
                     v.AddRange(SystemHalf.Half.GetBytes(1));
-                    v.AddRange(BitConverter.GetBytes(mesh.vertices[i].nx));
-                    v.AddRange(BitConverter.GetBytes(mesh.vertices[i].ny));
-                    v.AddRange(BitConverter.GetBytes(mesh.vertices[i].nz));
+                    v.AddRange(BitConverter.GetBytes(nml.X));
+                    v.AddRange(BitConverter.GetBytes(nml.Y));
+                    v.AddRange(BitConverter.GetBytes(nml.Z));
                     v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].u));
                     v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].v));
                 }
@@ -390,14 +390,13 @@ namespace StumpyUGXTools
             {
                 ibData.AddRange(BitConverter.GetBytes((short)mesh.indices[i]));
             }
-
-            Console.WriteLine("B");
+            
             return 1;
         }
         public List<Mesh> GetMeshes()
         {
             List<Mesh> meshes = new List<Mesh>();
-            Bone grannyRootBone = GetBones()[0];
+            List<Bone> bones = GetBones();
 
             for(int i = 0; i < subDataCount[0]; i++)
             {
@@ -413,7 +412,7 @@ namespace StumpyUGXTools
                 m.vertexBufferSizeInBytes = BitConverter.ToInt32(cachedData.GetRange(loc + 28, 4).ToArray(), 0);
                 m.vertexSize = BitConverter.ToInt32(cachedData.GetRange(loc + 32, 4).ToArray(), 0);
                 m.vertexCount = BitConverter.ToInt32(cachedData.GetRange(loc + 36, 4).ToArray(), 0);
-                m.rigidOnly = BitConverter.ToBoolean(cachedData.GetRange(loc + 124, 1).ToArray(), 0);
+                m.rigidOnly = BitConverter.ToBoolean(cachedData.GetRange(loc + 144, 1).ToArray(), 0);
 
                 for (int j = 0; j < m.faceCount; j++)
                 {
@@ -505,7 +504,8 @@ namespace StumpyUGXTools
                     v.v = 1 - v.v;
                     m.vertices.Add(v);
                 }
-                m.rootMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1) * grannyRootBone.boneMatrix;
+
+                m.rootMatrix = bones[0].boneMatrix.Inverted() * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
                 meshes.Add(m);
             }
             return meshes;
@@ -564,8 +564,8 @@ namespace StumpyUGXTools
                 m.M44 = m44;
 
                 b.boneMatrix = m.Inverted();
-                //if (i > 0) b.rootMatrix = bones[0].boneMatrix.Inverted();
-                //else b.rootMatrix = Matrix4.Identity.Inverted();
+                if (i > 0) b.rootMatrix = bones[0].boneMatrix.Inverted();
+                else b.rootMatrix = b.boneMatrix.Inverted();
                 bones.Add(b);
             }
             return bones;
