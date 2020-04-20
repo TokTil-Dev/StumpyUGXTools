@@ -372,6 +372,11 @@ namespace StumpyUGXTools
             ugx.SaveNewMaterial();
             foreach(Mesh m in UGXmeshes)
             {
+                if(m.markedForDeletion)
+                {
+                    m.hasBeenModified = true;
+                    m.faceCount = 0;
+                }
                 if(m.hasBeenModified)
                 {
                     ugx.ReplaceMesh(m, UGXmeshes.IndexOf(m));
@@ -512,7 +517,7 @@ namespace StumpyUGXTools
                 rn.AddToTree(meshEditorTab.fbxMeshTree);
                 viewport.viewport.Invalidate();
             }
-        }                         //import bx
+        }                         //import fbx
         private void uGXToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (editor.ofd.ShowDialog() == DialogResult.OK)
@@ -543,7 +548,7 @@ namespace StumpyUGXTools
             }
             rn.AddToTree(meshEditorTab.fbxMeshTree);
             viewport.viewport.Invalidate();
-        }                    //import ugx (wip)
+        }                    //import ugx (wip, currently disabled.)
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DoUGXSave();
@@ -1133,6 +1138,18 @@ namespace StumpyUGXTools
             {
                 public void SetParent(TreeNode t)
                 {
+                    toggleVisible.Text = "Hidden";
+                    toggleVisible.CheckOnClick = true;
+                    toggleVisible.Checked = false;
+                    toggleVisible.Click += new EventHandler(ToggleVisibleFunc);
+                    
+                    remove.Text = "Mark For Deletion";
+                    toggleVisible.CheckOnClick = false;
+                    remove.Click += new EventHandler(RemoveFunc);
+
+                    ugxPerMeshMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(RightClickFunc);
+                    treeNode.ContextMenuStrip = ugxPerMeshMenuStrip;
+                    
                     t.Nodes.Add(treeNode);
                 }
 
@@ -1160,9 +1177,63 @@ namespace StumpyUGXTools
                     treeNode.Text = newName;
                 }
 
+                ContextMenuStrip ugxPerMeshMenuStrip = new ContextMenuStrip();
+                void RightClickFunc(object o, System.ComponentModel.CancelEventArgs e)
+                {
+                    editor.meshEditorTab.SelectUGXMesh(editor.UGXmeshes[treeNode.Index]);
+
+                    ugxPerMeshMenuStrip.Items.Clear();
+                    if(editor.UGXmeshes[treeNode.Index].markedForDeletion)
+                    {
+                        ugxPerMeshMenuStrip.Items.Add(remove);
+                        remove.Text = "Unmark For Deletion";
+                    }
+                    if(!editor.UGXmeshes[treeNode.Index].markedForDeletion)
+                    {
+                        ugxPerMeshMenuStrip.Items.Add(toggleVisible);
+                        ugxPerMeshMenuStrip.Items.Add(remove);
+                        remove.Text = "Mark For Deletion";
+                    }
+                }
+
+                ToolStripMenuItem toggleVisible = new ToolStripMenuItem();
+                void ToggleVisibleFunc(object o, EventArgs e)
+                {
+                    editor.UGXmeshes[treeNode.Index].isEnabled = !editor.UGXmeshes[treeNode.Index].isEnabled;
+                    if (!editor.UGXmeshes[treeNode.Index].isEnabled)
+                    {
+                        SetNameSuffix("Hidden");
+                        toggleVisible.Checked = true;
+                    }
+                    if (editor.UGXmeshes[treeNode.Index].isEnabled)
+                    {
+                        SetNameSuffix("");
+                        toggleVisible.Checked = false;
+                    }
+                    editor.viewport.viewport.Invalidate();
+                }
+
+                ToolStripMenuItem remove = new ToolStripMenuItem();
+                void RemoveFunc(object o, EventArgs e)
+                {
+                    editor.UGXmeshes[treeNode.Index].markedForDeletion = !editor.UGXmeshes[treeNode.Index].markedForDeletion;
+                    if (editor.UGXmeshes[treeNode.Index].markedForDeletion)
+                    {
+                        SetNameSuffix("Removed");
+                        editor.UGXmeshes[treeNode.Index].isEnabled = false;
+                        toggleVisible.Checked = true;
+                    }
+                    else
+                    {
+                        SetNameSuffix("");
+                        editor.UGXmeshes[treeNode.Index].isEnabled = true;
+                        toggleVisible.Checked = false;
+                    }
+                    editor.viewport.viewport.Invalidate();
+                }
+
                 public string name = "", suffix = "", prefix = "";
                 private TreeNode treeNode = new TreeNode();
-                public int meshIndex = -1;
             }
             public class UGXBoneNode
             {
@@ -2576,6 +2647,7 @@ void main()
             public bool isEnabled = true;
             public bool isReferenceMesh = false;
             public bool hasBeenModified = false;
+            public bool markedForDeletion = false;
 
             //OGL
             int vb, ib, indexCount;
