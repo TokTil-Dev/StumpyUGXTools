@@ -25,12 +25,10 @@ namespace StumpyUGXTools
 {
     class Editor : Form
     {
-        
         public int EditorToolSideWindowWidth;
         public int EditorToolsLeftMargin;
         public OpenFileDialog ofd;
         private FolderBrowserDialog fbd;
-        public TextBox version;
         private System.ComponentModel.IContainer components;
         public ToolTip toolTips;
         public TabControl editorSelecter;
@@ -44,8 +42,9 @@ namespace StumpyUGXTools
         private ToolStripMenuItem keyBindingsToolStripMenuItem;
         private ToolStripMenuItem editToolStripMenuItem;
         private ToolStripMenuItem textureReferencePathToolStripMenuItem;
-        private Label versionLabel;
+        public Label versionLabel;
         private ToolStripMenuItem setUGXReferenceToolStripMenuItem;
+        private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem saveToolStripMenuItem;
 
         public void InitializeComponent()
@@ -53,7 +52,6 @@ namespace StumpyUGXTools
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Editor));
             this.ofd = new System.Windows.Forms.OpenFileDialog();
-            this.version = new System.Windows.Forms.TextBox();
             this.toolTips = new System.Windows.Forms.ToolTip(this.components);
             this.editorSelecter = new System.Windows.Forms.TabControl();
             this.menuStrip = new System.Windows.Forms.MenuStrip();
@@ -70,20 +68,9 @@ namespace StumpyUGXTools
             this.keyBindingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.versionLabel = new System.Windows.Forms.Label();
             this.fbd = new System.Windows.Forms.FolderBrowserDialog();
+            this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // version
-            // 
-            this.version.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.version.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.version.Location = new System.Drawing.Point(523, 13);
-            this.version.Name = "version";
-            this.version.ReadOnly = true;
-            this.version.Size = new System.Drawing.Size(140, 13);
-            this.version.TabIndex = 6;
-            this.version.Text = "0.0.0";
-            this.version.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // editorSelecter
             // 
@@ -193,12 +180,17 @@ namespace StumpyUGXTools
             // versionLabel
             // 
             this.versionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.versionLabel.Location = new System.Drawing.Point(1340, 9);
+            this.versionLabel.Location = new System.Drawing.Point(1340, 8);
             this.versionLabel.Name = "versionLabel";
             this.versionLabel.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.versionLabel.Size = new System.Drawing.Size(101, 15);
             this.versionLabel.TabIndex = 10;
             this.versionLabel.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
+            // contextMenuStrip1
+            // 
+            this.contextMenuStrip1.Name = "contextMenuStrip1";
+            this.contextMenuStrip1.Size = new System.Drawing.Size(61, 4);
             // 
             // Editor
             // 
@@ -219,26 +211,12 @@ namespace StumpyUGXTools
             this.PerformLayout();
 
         }
-        public void LogOut(string s)
-        {
-            Console.WriteLine(s);
-            //if(s != lastString)
-            //{
-            //    logBox.Text = s;
-            //    lastString = s;
-            //    numRepeated = 1;
-            //}
-            //else
-            //{
-            //    numRepeated++;
-            //    logBox.Text = s + " (" + numRepeated + ")";
-            //}
-        }
 
         public static UGXFile ugx = new UGXFile();
         public Viewport viewport;
         public MeshEditor meshEditorTab;
         public MaterialEditor materialEditorTab;
+        public Log log;
 
         uint nullTexture = 65535;
         //imported meshes
@@ -259,17 +237,19 @@ namespace StumpyUGXTools
         public string textureReferencePath = "";
 
         // UI //
-        enum SelectedView { Null, Mesh, Material }
+        enum SelectedView { Null, Mesh, Material, Log }
         void SwapView(SelectedView v)
         {
             if (v == SelectedView.Null)
             {
+                log.Hide();
                 materialEditorTab.Hide();
                 meshEditorTab.Hide();
             }
 
             if (v == SelectedView.Material && ugxLoaded)
             {
+                log.Hide();
                 meshEditorTab.Hide();
                 materialEditorTab.Show();
                 int i = materialEditorTab.materialSelector.SelectedIndex;
@@ -279,8 +259,16 @@ namespace StumpyUGXTools
 
             if (v == SelectedView.Mesh && ugxLoaded)
             {
+                log.Hide();
                 materialEditorTab.Hide();
                 meshEditorTab.Show();
+            }
+
+            if (v == SelectedView.Log)
+            {
+                log.Show();
+                materialEditorTab.Hide();
+                meshEditorTab.Hide();
             }
         }
         /////// WinForms Functions
@@ -292,6 +280,7 @@ namespace StumpyUGXTools
             meshEditorTab = new MeshEditor();
             materialEditorTab = new MaterialEditor();
             viewport = new Viewport();
+            log = new Log();
             viewport.InitViewport();
             Controls.Add(editorSelecter);
 
@@ -312,6 +301,10 @@ namespace StumpyUGXTools
             if (editorSelecter.SelectedIndex == 1)
             {
                 SwapView(SelectedView.Material);
+            }
+            if(editorSelecter.SelectedIndex == 2)
+            {
+                SwapView(SelectedView.Log);
             }
         }
         
@@ -341,9 +334,9 @@ namespace StumpyUGXTools
                     ugx = f;
                     ugxLoaded = true;
 
-                    LogOut("UGX Loaded: " + path);
                     editorSelecter.SelectedIndex = -1;
                     editorSelecter.SelectedIndex = 0;
+                    log.LogOut("UGX Loaded: " + path);
                     materialEditorTab.SetupPathView();
                     meshEditorTab.PopulateUGXTree();
                     meshEditorTab.PopulateUGXBoneTree();
@@ -354,7 +347,7 @@ namespace StumpyUGXTools
             }
             else
             {
-                LogOut("File not found: " + path);
+                log.LogOut("File not found: " + path);
                 return -1;
             }
         }
@@ -383,7 +376,7 @@ namespace StumpyUGXTools
                 }
             }
             ugx.Save(ugx.filePath);
-            LogOut("File saved.");
+            log.LogOut("File saved.");
         }
         public List<Mesh> ImportFBX(string path)
         {
@@ -434,7 +427,7 @@ namespace StumpyUGXTools
                 mesh.vertexCount = mesh.vertices.Count;
                 Console.WriteLine("Verts " + mesh.vertexCount);
                 Console.WriteLine("Faces " + mesh.faceCount);
-                if (mesh.vertexCount > 65535) LogOut("Warning: Imported mesh " + mesh.name + " has " + mesh.vertexCount + " vertices, which exceeds the maximum safe limit of 65535.");
+                if (mesh.vertexCount > 65535) log.LogOut("Warning: Imported mesh " + mesh.name + " has " + mesh.vertexCount + " vertices, which exceeds the maximum safe limit of 65535.");
                 meshes.Add(mesh);
             }
 
@@ -449,7 +442,6 @@ namespace StumpyUGXTools
             materialDiffuseTextures.Clear();
             for (int i = 0; i < materialEditorTab.matData.Count; i++)
             {
-                Console.WriteLine(GL.GetError());
                 uint name = 65535;
                 TextureTarget t;
                 if (materialEditorTab.matData[i].hasValue[0])
@@ -467,7 +459,7 @@ namespace StumpyUGXTools
                     }
                     catch
                     {
-                        Console.WriteLine("Could not load DDX/S at " + textureReferencePath + materialEditorTab.matData[i].pathStrings[0]);
+                        log.LogOut("Could not load DDX/S at " + textureReferencePath + materialEditorTab.matData[i].pathStrings[0]);
                     }
                 }
                 else name = nullTexture;
@@ -493,7 +485,7 @@ namespace StumpyUGXTools
             {
                 if (Path.GetExtension(editor.ofd.FileName) != ".fbx" && Path.GetExtension(editor.ofd.FileName) != ".FBX")
                 {
-                    editor.LogOut("File selected was not an fbx.");
+                    editor.log.LogOut("File selected was not an fbx.");
                     return;
                 }
 
@@ -524,7 +516,7 @@ namespace StumpyUGXTools
             {
                 if (Path.GetExtension(editor.ofd.FileName) != ".ugx" && Path.GetExtension(editor.ofd.FileName) != ".UGX")
                 {
-                    editor.LogOut("File selected was not an ugx.");
+                    editor.log.LogOut("File selected was not an ugx.");
                     return;
                 }
             }
@@ -1322,7 +1314,7 @@ namespace StumpyUGXTools
                 {
                     if(bn.treeNode == ugxBoneTree.SelectedNode)
                     {
-                        editor.UGXbones[bn.boneListIndex].isSelected = true;
+                        SelectUGXBone(editor.UGXbones[bn.boneListIndex]);
                     }
                     editor.viewport.viewport.Invalidate();
                 }
@@ -1386,124 +1378,158 @@ namespace StumpyUGXTools
                 }
             }
 
+
             //value modification
+            EventHandler mMatID;
+            EventHandler mPosX;
+            EventHandler mPosY;
+            EventHandler mPosZ;
+            EventHandler mRotX;
+            EventHandler mRotY;
+            EventHandler mRotZ;
+            EventHandler mSclX;
+            EventHandler mSclY;
+            EventHandler mSclZ;
+
+            EventHandler bPosX;
+            EventHandler bPosY;
+            EventHandler bPosZ;
+            EventHandler bRotX;
+            EventHandler bRotY;
+            EventHandler bRotZ;
+            EventHandler bSclX;
+            EventHandler bSclY;
+            EventHandler bSclZ;
             void InitValueModification()
             {
+                mMatID = new EventHandler(SetMeshMatID);
+                mPosX = new EventHandler(SetMeshPosX);
+                mPosY = new EventHandler(SetMeshPosY);
+                mPosZ = new EventHandler(SetMeshPosZ);
+                mRotX = new EventHandler(SetMeshRotX);
+                mRotY = new EventHandler(SetMeshRotY);
+                mRotZ = new EventHandler(SetMeshRotZ);
+                mSclX = new EventHandler(SetMeshSclX);
+                mSclY = new EventHandler(SetMeshSclY);
+                mSclZ = new EventHandler(SetMeshSclZ);
+
+                bPosX = new EventHandler(SetBonePosX);
+                bPosY = new EventHandler(SetBonePosY);
+                bPosZ = new EventHandler(SetBonePosZ);
+                bRotX = new EventHandler(SetBoneRotX);
+                bRotY = new EventHandler(SetBoneRotY);
+                bRotZ = new EventHandler(SetBoneRotZ);
+                bSclX = new EventHandler(SetBoneSclX);
+                bSclY = new EventHandler(SetBoneSclY);
+                bSclZ = new EventHandler(SetBoneSclZ);
+
                 int yLoc = ugxBoneTree.Location.Y + ugxBoneTree.Height + 10;
 
-                meshPosLabel = new Label();
-                meshPosLabel.Location = new Point(editor.EditorToolsLeftMargin, yLoc);
-                meshPosLabel.Size = new Size(75, 15);
-                meshPosLabel.Text = "Position";
+                PosLabel = new Label();
+                PosLabel.Location = new Point(editor.EditorToolsLeftMargin, yLoc);
+                PosLabel.Size = new Size(75, 15);
+                PosLabel.Text = "Position";
 
-                meshPosX = new NumericUpDown();
-                meshPosX.Location = new Point(meshPosLabel.Location.X, meshPosLabel.Location.Y + 15);
-                meshPosX.Size = new Size(75, 20);
-                meshPosX.DecimalPlaces = 5;
-                meshPosX.Maximum = 1500m;
-                meshPosX.Minimum = -1500m;
-                meshPosX.Value = 0m;
-                meshPosX.ValueChanged += new EventHandler(SetMeshPosX);
+                PosX = new NumericUpDown();
+                PosX.Location = new Point(PosLabel.Location.X, PosLabel.Location.Y + 15);
+                PosX.Size = new Size(75, 20);
+                PosX.DecimalPlaces = 5;
+                PosX.Maximum = 1500m;
+                PosX.Minimum = -1500m;
+                PosX.Value = 0m;
 
-                meshPosY = new NumericUpDown();
-                meshPosY.Location = new Point(meshPosLabel.Location.X, meshPosLabel.Location.Y + 37);
-                meshPosY.Size = new Size(75, 20);
-                meshPosY.DecimalPlaces = 5;
-                meshPosY.Maximum = 1500m;
-                meshPosY.Minimum = -1500m;
-                meshPosY.Value = 0m;
-                meshPosY.ValueChanged += new EventHandler(SetMeshPosY);
+                PosY = new NumericUpDown();
+                PosY.Location = new Point(PosLabel.Location.X, PosLabel.Location.Y + 37);
+                PosY.Size = new Size(75, 20);
+                PosY.DecimalPlaces = 5;
+                PosY.Maximum = 1500m;
+                PosY.Minimum = -1500m;
+                PosY.Value = 0m;
 
-                meshPosZ = new NumericUpDown();
-                meshPosZ.Location = new Point(meshPosLabel.Location.X, meshPosLabel.Location.Y + 59);
-                meshPosZ.Size = new Size(75, 20);
-                meshPosZ.DecimalPlaces = 5;
-                meshPosZ.Maximum = 1500m;
-                meshPosZ.Minimum = -1500m;
-                meshPosZ.Value = 0m;
-                meshPosZ.ValueChanged += new EventHandler(SetMeshPosZ);
+                PosZ = new NumericUpDown();
+                PosZ.Location = new Point(PosLabel.Location.X, PosLabel.Location.Y + 59);
+                PosZ.Size = new Size(75, 20);
+                PosZ.DecimalPlaces = 5;
+                PosZ.Maximum = 1500m;
+                PosZ.Minimum = -1500m;
+                PosZ.Value = 0m;
 
 
-                meshRotLabel = new Label();
-                meshRotLabel.Location = new Point(editor.EditorToolsLeftMargin + meshPosX.Size.Width + 10, yLoc);
-                meshRotLabel.Size = new Size(80, 15);
-                meshRotLabel.Text = "Rotation (deg.)";
 
-                meshRotX = new NumericUpDown();
-                meshRotX.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + 10, meshPosLabel.Location.Y + 15);
-                meshRotX.Size = new Size(75, 20);
-                meshRotX.DecimalPlaces = 5;
-                meshRotX.Maximum = 360m;
-                meshRotX.Minimum = -360m;
-                meshRotX.Value = 0m;
-                meshRotX.ValueChanged += new EventHandler(SetMeshRotX);
+                RotLabel = new Label();
+                RotLabel.Location = new Point(editor.EditorToolsLeftMargin + PosX.Size.Width + 10, yLoc);
+                RotLabel.Size = new Size(80, 15);
+                RotLabel.Text = "Rotation (deg.)";
 
-                meshRotY = new NumericUpDown();
-                meshRotY.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + 10, meshPosLabel.Location.Y + 37);
-                meshRotY.Size = new Size(75, 20);
-                meshRotY.DecimalPlaces = 5;
-                meshRotY.Maximum = 360m;
-                meshRotY.Minimum = -360m;
-                meshRotY.Value = 0m;
-                meshRotY.ValueChanged += new EventHandler(SetMeshRotY);
+                RotX = new NumericUpDown();
+                RotX.Location = new Point(PosLabel.Location.X + PosX.Size.Width + 10, PosLabel.Location.Y + 15);
+                RotX.Size = new Size(75, 20);
+                RotX.DecimalPlaces = 5;
+                RotX.Maximum = 360m;
+                RotX.Minimum = -360m;
+                RotX.Value = 0m;
 
-                meshRotZ = new NumericUpDown();
-                meshRotZ.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + 10, meshPosLabel.Location.Y + 59);
-                meshRotZ.Size = new Size(75, 20);
-                meshRotZ.DecimalPlaces = 5;
-                meshRotZ.Maximum = 360m;
-                meshRotZ.Minimum = -360m;
-                meshRotZ.Value = 0m;
-                meshRotZ.ValueChanged += new EventHandler(SetMeshRotZ);
+                RotY = new NumericUpDown();
+                RotY.Location = new Point(PosLabel.Location.X + PosX.Size.Width + 10, PosLabel.Location.Y + 37);
+                RotY.Size = new Size(75, 20);
+                RotY.DecimalPlaces = 5;
+                RotY.Maximum = 360m;
+                RotY.Minimum = -360m;
+                RotY.Value = 0m;
+
+                RotZ = new NumericUpDown();
+                RotZ.Location = new Point(PosLabel.Location.X + PosX.Size.Width + 10, PosLabel.Location.Y + 59);
+                RotZ.Size = new Size(75, 20);
+                RotZ.DecimalPlaces = 5;
+                RotZ.Maximum = 360m;
+                RotZ.Minimum = -360m;
+                RotZ.Value = 0m;
 
 
-                meshSclLabel = new Label();
-                meshSclLabel.Location = new Point(editor.EditorToolsLeftMargin + meshPosX.Size.Width + meshRotX.Size.Width + 20, yLoc);
-                meshSclLabel.Size = new Size(75, 15);
-                meshSclLabel.Text = "Scale";
+                SclLabel = new Label();
+                SclLabel.Location = new Point(editor.EditorToolsLeftMargin + PosX.Size.Width + RotX.Size.Width + 20, yLoc);
+                SclLabel.Size = new Size(75, 15);
+                SclLabel.Text = "Scale";
 
-                meshSclX = new NumericUpDown();
-                meshSclX.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + 20, meshPosLabel.Location.Y + 15);
-                meshSclX.Size = new Size(75, 20);
-                meshSclX.DecimalPlaces = 5;
-                meshSclX.Maximum = 1000m;
-                meshSclX.Minimum = -1000m;
-                meshSclX.Value = 1m;
-                meshSclX.ValueChanged += new EventHandler(SetMeshSclX);
+                SclX = new NumericUpDown();
+                SclX.Location = new Point(PosLabel.Location.X + PosX.Size.Width + RotX.Size.Width + 20, PosLabel.Location.Y + 15);
+                SclX.Size = new Size(75, 20);
+                SclX.DecimalPlaces = 5;
+                SclX.Maximum = 1000m;
+                SclX.Minimum = -1000m;
+                SclX.Value = 1m;
 
-                meshSclY = new NumericUpDown();
-                meshSclY.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + 20, meshPosLabel.Location.Y + 37);
-                meshSclY.Size = new Size(75, 20);
-                meshSclY.DecimalPlaces = 5;
-                meshSclY.Maximum = 1000m;
-                meshSclY.Minimum = -1000m;
-                meshSclY.Value = 1m;
-                meshSclY.ValueChanged += new EventHandler(SetMeshSclY);
+                SclY = new NumericUpDown();
+                SclY.Location = new Point(PosLabel.Location.X + PosX.Size.Width + RotX.Size.Width + 20, PosLabel.Location.Y + 37);
+                SclY.Size = new Size(75, 20);
+                SclY.DecimalPlaces = 5;
+                SclY.Maximum = 1000m;
+                SclY.Minimum = -1000m;
+                SclY.Value = 1m;
 
-                meshSclZ = new NumericUpDown();
-                meshSclZ.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + 20, meshPosLabel.Location.Y + 59);
-                meshSclZ.Size = new Size(75, 20);
-                meshSclZ.DecimalPlaces = 5;
-                meshSclZ.Maximum = 1000m;
-                meshSclZ.Minimum = -1000m;
-                meshSclZ.Value = 1m;
-                meshSclZ.ValueChanged += new EventHandler(SetMeshSclZ);
+                SclZ = new NumericUpDown();
+                SclZ.Location = new Point(PosLabel.Location.X + PosX.Size.Width + RotX.Size.Width + 20, PosLabel.Location.Y + 59);
+                SclZ.Size = new Size(75, 20);
+                SclZ.DecimalPlaces = 5;
+                SclZ.Maximum = 1000m;
+                SclZ.Minimum = -1000m;
+                SclZ.Value = 1m;
 
 
                 replaceMesh = new Button();
                 replaceMesh.Location = new Point(11, 720 - 38);
                 replaceMesh.Size = new Size(editor.EditorToolSideWindowWidth, 30);
-                replaceMesh.Text = "Replace this mesh with selected import.";
+                replaceMesh.Text = "Replace this  with selected import.";
                 replaceMesh.Click += new EventHandler(ReplaceMeshFunc);
 
 
                 matIDLabel = new Label();
-                matIDLabel.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + meshSclZ.Size.Width + 30, meshPosLabel.Location.Y);
+                matIDLabel.Location = new Point(PosLabel.Location.X + PosX.Size.Width + RotX.Size.Width + SclZ.Size.Width + 30, PosLabel.Location.Y);
                 matIDLabel.Size = new Size(75, 15);
                 matIDLabel.Text = "Material ID";
 
                 materialID = new NumericUpDown();
-                materialID.Location = new Point(meshPosLabel.Location.X + meshPosX.Size.Width + meshRotX.Size.Width + meshSclZ.Size.Width + 30, meshPosLabel.Location.Y + 15);
+                materialID.Location = new Point(PosLabel.Location.X + PosX.Size.Width + RotX.Size.Width + SclZ.Size.Width + 30, PosLabel.Location.Y + 15);
                 materialID.Size = new Size(75, 20);
                 materialID.DecimalPlaces = 0;
                 materialID.Maximum = 1000m;
@@ -1512,27 +1538,73 @@ namespace StumpyUGXTools
                 materialID.ValueChanged += new EventHandler(SetMeshMatID);
             }
 
+            //mesh modification
             Button replaceMesh;
             Label matIDLabel;
             NumericUpDown materialID;
-            Label meshPosLabel;
-            NumericUpDown meshPosX;
-            NumericUpDown meshPosY;
-            NumericUpDown meshPosZ;
-            Label meshRotLabel;
-            NumericUpDown meshRotX;
-            NumericUpDown meshRotY;
-            NumericUpDown meshRotZ;
-            Label meshSclLabel;
-            NumericUpDown meshSclX;
-            NumericUpDown meshSclY;
-            NumericUpDown meshSclZ;
+            Label PosLabel;
+            NumericUpDown PosX;
+            NumericUpDown PosY;
+            NumericUpDown PosZ;
+            Label RotLabel;
+            NumericUpDown RotX;
+            NumericUpDown RotY;
+            NumericUpDown RotZ;
+            Label SclLabel;
+            NumericUpDown SclX;
+            NumericUpDown SclY;
+            NumericUpDown SclZ;
 
             Mesh selectedMesh;
             public void SelectUGXMesh(Mesh selMesh)
             {
+                DeselectUGXBone();
+
                 ugxMeshTree.SelectedNode = ugxMeshTree.Nodes[0].Nodes[editor.UGXmeshes.IndexOf(selMesh)];
-                SelectMeshForEditing(selMesh);
+
+                selectedMesh = selMesh;
+                selectedMesh.isHighlighted = true;
+                materialID.Value = selectedMesh.materialID;
+                PosX.Value = (decimal)selectedMesh.position.X;
+                PosY.Value = (decimal)selectedMesh.position.Y;
+                PosZ.Value = (decimal)selectedMesh.position.Z;
+                RotX.Value = (decimal)selectedMesh.rotationE.X;
+                RotY.Value = (decimal)selectedMesh.rotationE.Y;
+                RotZ.Value = (decimal)selectedMesh.rotationE.Z;
+                SclX.Value = (decimal)selectedMesh.scale.X;
+                SclY.Value = (decimal)selectedMesh.scale.Y;
+                SclZ.Value = (decimal)selectedMesh.scale.Z;
+
+                if (editor.editorSelecter.SelectedIndex == 0)
+                {
+                    editor.Controls.Add(replaceMesh);
+                    editor.Controls.Add(matIDLabel);
+                    editor.Controls.Add(materialID);
+                    editor.Controls.Add(PosLabel);
+                    editor.Controls.Add(PosX);
+                    editor.Controls.Add(PosY);
+                    editor.Controls.Add(PosZ);
+                    editor.Controls.Add(RotLabel);
+                    editor.Controls.Add(RotX);
+                    editor.Controls.Add(RotY);
+                    editor.Controls.Add(RotZ);
+                    editor.Controls.Add(SclLabel);
+                    editor.Controls.Add(SclX);
+                    editor.Controls.Add(SclY);
+                    editor.Controls.Add(SclZ);
+                }
+
+                PosX.ValueChanged += mPosX;
+                PosY.ValueChanged += mPosY;
+                PosZ.ValueChanged += mPosZ;
+
+                RotX.ValueChanged += mRotX;
+                RotY.ValueChanged += mRotY;
+                RotZ.ValueChanged += mRotZ;
+
+                SclX.ValueChanged += mSclX;
+                SclY.ValueChanged += mSclY;
+                SclZ.ValueChanged += mSclZ;
             }
             public void DeselectUGXMesh()
             {
@@ -1541,62 +1613,40 @@ namespace StumpyUGXTools
                     ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
                     ugxMeshTree.SelectedNode = null;
                 }
-                DeselectMesh();
-            }
-            void SelectMeshForEditing(Mesh m)
-            {
-                selectedMesh = m;
-                selectedMesh.isHighlighted = true;
-                materialID.Value = selectedMesh.materialID;
-                meshPosX.Value = (decimal)selectedMesh.position.X;
-                meshPosY.Value = (decimal)selectedMesh.position.Y;
-                meshPosZ.Value = (decimal)selectedMesh.position.Z;
-                meshRotX.Value = (decimal)selectedMesh.rotationE.X;
-                meshRotY.Value = (decimal)selectedMesh.rotationE.Y;
-                meshRotZ.Value = (decimal)selectedMesh.rotationE.Z;
-                meshSclX.Value = (decimal)selectedMesh.scale.X;
-                meshSclY.Value = (decimal)selectedMesh.scale.Y;
-                meshSclZ.Value = (decimal)selectedMesh.scale.Z;
 
-                editor.Controls.Add(replaceMesh);
-                editor.Controls.Add(matIDLabel);
-                editor.Controls.Add(meshPosLabel);
-                editor.Controls.Add(materialID);
-                editor.Controls.Add(meshPosLabel);
-                editor.Controls.Add(meshPosX);
-                editor.Controls.Add(meshPosY);
-                editor.Controls.Add(meshPosZ);
-                editor.Controls.Add(meshRotLabel);
-                editor.Controls.Add(meshRotX);
-                editor.Controls.Add(meshRotY);
-                editor.Controls.Add(meshRotZ);
-                editor.Controls.Add(meshSclLabel);
-                editor.Controls.Add(meshSclX);
-                editor.Controls.Add(meshSclY);
-                editor.Controls.Add(meshSclZ);
-            }
-            void DeselectMesh()
-            {
                 if (selectedMesh != null)
                 {
                     selectedMesh.isHighlighted = false;
                     selectedMesh = null;
                 }
+
+                PosX.ValueChanged -= mPosX;
+                PosY.ValueChanged -= mPosY;
+                PosZ.ValueChanged -= mPosZ;
+
+                RotX.ValueChanged -= mRotX;
+                RotY.ValueChanged -= mRotY;
+                RotZ.ValueChanged -= mRotZ;
+
+                SclX.ValueChanged -= mSclX;
+                SclY.ValueChanged -= mSclY;
+                SclZ.ValueChanged -= mSclZ;
+
                 editor.Controls.Remove(replaceMesh);
                 editor.Controls.Remove(matIDLabel);
                 editor.Controls.Remove(materialID);
-                editor.Controls.Remove(meshPosLabel);
-                editor.Controls.Remove(meshPosX);
-                editor.Controls.Remove(meshPosY);
-                editor.Controls.Remove(meshPosZ);
-                editor.Controls.Remove(meshRotLabel);
-                editor.Controls.Remove(meshRotX);
-                editor.Controls.Remove(meshRotY);
-                editor.Controls.Remove(meshRotZ);
-                editor.Controls.Remove(meshSclLabel);
-                editor.Controls.Remove(meshSclX);
-                editor.Controls.Remove(meshSclY);
-                editor.Controls.Remove(meshSclZ);
+                editor.Controls.Remove(PosLabel);
+                editor.Controls.Remove(PosX);
+                editor.Controls.Remove(PosY);
+                editor.Controls.Remove(PosZ);
+                editor.Controls.Remove(RotLabel);
+                editor.Controls.Remove(RotX);
+                editor.Controls.Remove(RotY);
+                editor.Controls.Remove(RotZ);
+                editor.Controls.Remove(SclLabel);
+                editor.Controls.Remove(SclX);
+                editor.Controls.Remove(SclY);
+                editor.Controls.Remove(SclZ);
                 editor.viewport.viewport.Invalidate();
             }
             void ReplaceMeshFunc(object o, EventArgs e)
@@ -1612,66 +1662,212 @@ namespace StumpyUGXTools
                     editor.viewport.viewport.Invalidate();
                 }
             }
-            void SetMeshPosX(object o, EventArgs e)
-            {
-                selectedMesh.position.X = (Half)meshPosX.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshPosY(object o, EventArgs e)
-            {
-                selectedMesh.position.Y = (Half)meshPosY.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshPosZ(object o, EventArgs e)
-            {
-                selectedMesh.position.Z = (Half)meshPosZ.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshRotX(object o, EventArgs e)
-            {
-                selectedMesh.rotationE.X = (Half)meshRotX.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshRotY(object o, EventArgs e)
-            {
-                selectedMesh.rotationE.Y = (Half)meshRotY.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshRotZ(object o, EventArgs e)
-            {
-                selectedMesh.rotationE.Z = (Half)meshRotZ.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshSclX(object o, EventArgs e)
-            {
-                selectedMesh.scale.X = (Half)meshSclX.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshSclY(object o, EventArgs e)
-            {
-                selectedMesh.scale.Y = (Half)meshSclY.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
-            void SetMeshSclZ(object o, EventArgs e)
-            {
-                selectedMesh.scale.Z = (Half)meshSclZ.Value;
-                selectedMesh.UpdateModelMatrix();
-                selectedMesh.hasBeenModified = true;
-            }
+            
             void SetMeshMatID(object o, EventArgs e)
             {
                 if ((int)materialID.Value >= editor.materialDiffuseTextures.Count) materialID.Value = editor.materialDiffuseTextures.Count - 1;
                 selectedMesh.materialID = (int)materialID.Value;
                 selectedMesh.hasBeenModified = true;
                 editor.viewport.viewport.Invalidate();
+            }
+            void SetMeshPosX(object o, EventArgs e)
+            {
+                selectedMesh.position.X = (Half)PosX.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshPosY(object o, EventArgs e)
+            {
+                selectedMesh.position.Y = (Half)PosY.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshPosZ(object o, EventArgs e)
+            {
+                selectedMesh.position.Z = (Half)PosZ.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshRotX(object o, EventArgs e)
+            {
+                selectedMesh.rotationE.X = (Half)RotX.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshRotY(object o, EventArgs e)
+            {
+                selectedMesh.rotationE.Y = (Half)RotY.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshRotZ(object o, EventArgs e)
+            {
+                selectedMesh.rotationE.Z = (Half)RotZ.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshSclX(object o, EventArgs e)
+            {
+                selectedMesh.scale.X = (Half)SclX.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshSclY(object o, EventArgs e)
+            {
+                selectedMesh.scale.Y = (Half)SclY.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+            void SetMeshSclZ(object o, EventArgs e)
+            {
+                selectedMesh.scale.Z = (Half)SclZ.Value;
+                selectedMesh.UpdateModelMatrix();
+                selectedMesh.hasBeenModified = true;
+            }
+
+
+            Bone selectedBone;
+            public void SelectUGXBone(Bone b)
+            {
+                DeselectUGXMesh();
+
+                ugxBoneTree.SelectedNode = boneNodes[editor.UGXbones.IndexOf(b)].treeNode;
+
+                selectedBone = b;
+                selectedBone.isSelected = true;
+                Matrix4 selMat = selectedBone.transformMatrix;
+                b.isSelected = true;
+                PosX.Value = (decimal)selMat.ExtractTranslation().X;
+                PosY.Value = (decimal)selMat.ExtractTranslation().Y;
+                PosZ.Value = (decimal)selMat.ExtractTranslation().Z;
+                RotX.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().Y;
+                RotY.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().Z;
+                RotZ.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().W;
+                SclX.Value = (decimal)selMat.ExtractScale().X;
+                SclY.Value = (decimal)selMat.ExtractScale().Y;
+                SclZ.Value = (decimal)selMat.ExtractScale().Z;
+
+                if (editor.editorSelecter.SelectedIndex == 0)
+                {
+                    editor.Controls.Add(PosLabel);
+                    editor.Controls.Add(PosX);
+                    editor.Controls.Add(PosY);
+                    editor.Controls.Add(PosZ);
+                    editor.Controls.Add(RotLabel);
+                    editor.Controls.Add(RotX);
+                    editor.Controls.Add(RotY);
+                    editor.Controls.Add(RotZ);
+                    editor.Controls.Add(SclLabel);
+                    editor.Controls.Add(SclX);
+                    editor.Controls.Add(SclY);
+                    editor.Controls.Add(SclZ);
+                }
+
+                PosX.ValueChanged += bPosX;
+                PosY.ValueChanged += bPosY;
+                PosZ.ValueChanged += bPosZ;
+
+                RotX.ValueChanged += bRotX;
+                RotY.ValueChanged += bRotY;
+                RotZ.ValueChanged += bRotZ;
+
+                SclX.ValueChanged += bSclX;
+                SclY.ValueChanged += bSclY;
+                SclZ.ValueChanged += bSclZ;
+            }
+            public void DeselectUGXBone()
+            {
+                if(ugxBoneTree.SelectedNode != null)
+                {
+                    ugxBoneTree.SelectedNode.ForeColor = SystemColors.WindowText;
+                    ugxBoneTree.SelectedNode = null;
+                }
+
+                if(selectedBone != null)
+                {
+                    selectedBone.isSelected = false;
+                    selectedBone = null;
+                }
+
+                editor.Controls.Remove(PosLabel);
+                editor.Controls.Remove(PosX);
+                editor.Controls.Remove(PosY);
+                editor.Controls.Remove(PosZ);
+                editor.Controls.Remove(RotLabel);
+                editor.Controls.Remove(RotX);
+                editor.Controls.Remove(RotY);
+                editor.Controls.Remove(RotZ);
+                editor.Controls.Remove(SclLabel);
+                editor.Controls.Remove(SclX);
+                editor.Controls.Remove(SclY);
+                editor.Controls.Remove(SclZ);
+
+                PosX.ValueChanged -= bPosX;
+                PosY.ValueChanged -= bPosY;
+                PosZ.ValueChanged -= bPosZ;
+
+                RotX.ValueChanged -= bRotX;
+                RotY.ValueChanged -= bRotY;
+                RotZ.ValueChanged -= bRotZ;
+
+                SclX.ValueChanged -= bSclX;
+                SclY.ValueChanged -= bSclY;
+                SclZ.ValueChanged -= bSclZ;
+            }
+
+            void SetBonePosX(object o, EventArgs e)
+            {
+                selectedBone.position.X = (float)PosX.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBonePosY(object o, EventArgs e)
+            {
+                selectedBone.position.Y = (float)PosY.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBonePosZ(object o, EventArgs e)
+            {
+                selectedBone.position.Z = (float)PosZ.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneRotX(object o, EventArgs e)
+            {
+                selectedBone.rotationE.X = (float)RotX.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneRotY(object o, EventArgs e)
+            {
+                selectedBone.rotationE.Y = (float)RotY.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneRotZ(object o, EventArgs e)
+            {
+                selectedBone.rotationE.Z = (float)RotZ.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneSclX(object o, EventArgs e)
+            {
+                selectedBone.scale.X = (float)SclX.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneSclY(object o, EventArgs e)
+            {
+                selectedBone.scale.Y = (float)SclY.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
+            }
+            void SetBoneSclZ(object o, EventArgs e)
+            {
+                selectedBone.scale.Z = (float)SclZ.Value;
+                selectedBone.UpdateModelMatrix();
+                selectedBone.hasBeenModified = true;
             }
         }
         public class MaterialEditor : EditorTab
@@ -1817,7 +2013,7 @@ namespace StumpyUGXTools
                     }
                     matData.Add(d);
                 }
-                editor.LogOut("Found " + matData.Count + " materials.");
+                editor.log.LogOut("Found " + matData.Count + " materials.");
             }
             public void SaveMaterial()
             {
@@ -1883,6 +2079,52 @@ namespace StumpyUGXTools
                     materialSelector.Controls.Remove(m.tab);
                 }
                 matData.Clear();
+            }
+        }
+        public class Log : EditorTab
+        {
+            TextBox log = new TextBox();
+            public Log()
+            {
+                tab.Text = "Log     ";
+                log.Multiline = true;
+                log.Location = new Point(editor.EditorToolsLeftMargin, 50);
+                log.Size = new Size(editor.EditorToolSideWindowWidth, editor.Height - 97);
+                log.ScrollBars = ScrollBars.Vertical;
+            }
+
+            int newMessages = 0;
+            bool disableAlert = false;
+            public void LogOut(object o)
+            {
+#if DEBUG
+                Console.WriteLine(o.ToString());
+#endif
+
+                log.AppendText(o.ToString());
+                log.AppendText(Environment.NewLine);
+                if (!disableAlert)
+                {
+                    newMessages += 1;
+                    tab.Text = "Log (" + newMessages + ") ";
+                    for(int i = 0; i <  3 - newMessages.ToString().Count(); i++)
+                    {
+                        tab.Text += " ";
+                    }
+                }
+            }
+
+            public override void Show()
+            {
+                editor.Controls.Add(log);
+                disableAlert = true;
+                tab.Text = "Log";
+            }
+            public override void Hide()
+            {
+                editor.Controls.Remove(log);
+                newMessages = 0;
+                disableAlert = false;
             }
         }
 
@@ -2093,20 +2335,25 @@ namespace StumpyUGXTools
             void InitViewportInput()
             {
                 keys = new Dictionary<KeyName, InputKey>
-            {
-                {KeyName.up,   new InputKey(Keys.W) },
-                {KeyName.down,  new InputKey(Keys.S) },
-                {KeyName.left,      new InputKey(Keys.A) },
-                {KeyName.right,     new InputKey(Keys.D) },
-                {KeyName.zoomIn,     new InputKey(Keys.E) },
-                {KeyName.zoomOut,     new InputKey(Keys.Q) }
-            };
+                { 
+                    {KeyName.up,   new InputKey(Keys.W) },
+                    {KeyName.down,  new InputKey(Keys.S) },
+                    {KeyName.left,      new InputKey(Keys.A) },
+                    {KeyName.right,     new InputKey(Keys.D) },
+                    {KeyName.zoomIn,     new InputKey(Keys.E) },
+                    {KeyName.zoomOut,     new InputKey(Keys.Q) }
+                };
             }
             void viewport_KeyDown(object o, KeyEventArgs e)
             {
                 foreach (InputKey k in keys.Values)
                 {
                     k.PollKeyDown(e);
+                }
+
+                if(e.KeyCode == Keys.L)
+                {
+                    editor.log.LogOut("LogOut()");
                 }
             }
             void viewport_KeyUp(object o, KeyEventArgs e)
@@ -2131,7 +2378,6 @@ namespace StumpyUGXTools
                 byte g = Color.FromArgb(pixelData).G;
                 byte b = Color.FromArgb(pixelData).B;
                 Vector3 pixelColor = new Vector3((float)r / (float)255, (float)g / (float)255, (float)b / (float)255);
-                Console.WriteLine(pixelColor);
 
                 //deselect all
                 if (r == 0 && g == 0 && b == 0)
@@ -2203,12 +2449,7 @@ namespace StumpyUGXTools
                     {
                         if (bone.color == pixelColor)
                         {
-                            int i = editor.UGXbones.IndexOf(bone);
-                            foreach(MeshEditor.UGXBoneNode bn in editor.meshEditorTab.boneNodes)
-                            {
-                                if ((int)bn.treeNode.Tag == i) editor.meshEditorTab.ugxBoneTree.SelectedNode = bn.treeNode;
-                            }
-                            bone.isSelected = true;
+                            editor.meshEditorTab.SelectUGXBone(bone);
                         }
                         else bone.isSelected = false;
                     }
@@ -3012,13 +3253,26 @@ void main()
         public class Bone
         {
             public Matrix4 boneMatrix;
+            public Matrix4 transformMatrix = Matrix4.Identity;
             public Matrix4 rootMatrix = Matrix4.Identity;
+            public Vector3 position = Vector3.Zero;
+            public Vector3 rotationE = new Vector3();
+            public Vector3 scale = Vector3.One;
+            public void UpdateModelMatrix()
+            {
+                transformMatrix = Matrix4.CreateScale(scale);
+                transformMatrix *= Matrix4.CreateFromQuaternion(Quaternion.FromEulerAngles(rotationE * (float)(Math.PI / 180)));
+                transformMatrix *= Matrix4.CreateTranslation(position);
+                editor.viewport.viewport.Invalidate();
+            }
+
             public int parent;
             public string name;
             int vb, ib, mLoc, cLoc;
             static int boneShader; static bool init = false;
-            public bool isSelected = false, drawingSelectionColors = false;
+            public bool isSelected = false, drawingSelectionColors = false, hasBeenModified = false;
             public Vector3 color;
+
             public void InitDrawing()
             {
                 if (!init)
@@ -3170,7 +3424,7 @@ void main()
             public void Draw()
             {
                 GL.UseProgram(boneShader);
-                Matrix4 finalBoneMatrix = boneMatrix * rootMatrix * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
+                Matrix4 finalBoneMatrix = boneMatrix * rootMatrix * transformMatrix * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
                 GL.UniformMatrix4(mLoc, false, ref finalBoneMatrix);
 
                 if (!drawingSelectionColors)

@@ -13,7 +13,7 @@ static class Program
 {
     public static Random random = new Random();
     public static BigEndianBitConverter bec = new BigEndianBitConverter();
-    public static string version = "1.0.0-pre4";
+    public static string version = "1.0.0-pre5";
     public static Editor editor = new Editor();
 
     [STAThread]
@@ -33,7 +33,7 @@ static class Program
 
         Application.EnableVisualStyles();
         editor.InitializeComponent();
-        editor.version.Text = version;
+        editor.versionLabel.Text = version;
         Application.Run(editor);
     }
 }
