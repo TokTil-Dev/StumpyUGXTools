@@ -354,9 +354,11 @@ namespace StumpyUGXTools
         }
         public int ReplaceMesh(Mesh mesh, int meshIndexToReplace)
         {
-            if (meshIndexToReplace >= subDataCount[0]) return -1;
+            if (meshIndexToReplace >= subDataCount[0])
+            { editor.log.LogOut("meshIndexToReplace was larger than the number of meshes.", LogTab.LogType.Warning); return -1; }
 
-            mesh.vertexSize = 24;
+            mesh.vertexSize = 24; //temp
+
             int loc = (int)subDataOffset[0] + (meshIndexToReplace * 152);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.materialID), loc, 4);
             cachedData.ReplaceRange(BitConverter.GetBytes(mesh.rigidBoneIndex), loc + 12, 4);
@@ -381,7 +383,7 @@ namespace StumpyUGXTools
                     v.AddRange(BitConverter.GetBytes(nml.Y));
                     v.AddRange(BitConverter.GetBytes(nml.Z));
                     v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].u));
-                    v.AddRange(SystemHalf.Half.GetBytes(mesh.vertices[i].v));
+                    v.AddRange(SystemHalf.Half.GetBytes(-mesh.vertices[i].v));
                 }
             }
             vbData.AddRange(v);
@@ -390,13 +392,64 @@ namespace StumpyUGXTools
             {
                 ibData.AddRange(BitConverter.GetBytes((short)mesh.indices[i]));
             }
-            
+
+            return 1;
+        }
+        public int ReplaceBone(Bone bone, int boneIndexToReplace)
+        {
+            if (boneIndexToReplace >= subDataCount[1])
+            { editor.log.LogOut("boneIndexToReplace was larger than the number of bones.", LogTab.LogType.Warning); return -1; }
+
+            Matrix4 m = (bone.boneMatrix * bone.transformMatrix.Inverted() * new Matrix4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)).Inverted();
+
+            int gLoc = BitConverter.ToInt32(grannyData.ToArray(), (int)BitConverter.ToInt64(grannyData.ToArray(), 52) + 28) + (164 * boneIndexToReplace) + 80 - 4;
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M11), gLoc + 4, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M12), gLoc + 8, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M13), gLoc + 12, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M14), gLoc + 16, 4);
+
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M21), gLoc + 20, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M22), gLoc + 24, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M23), gLoc + 28, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M24), gLoc + 32, 4);
+
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M31), gLoc + 36, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M32), gLoc + 40, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M33), gLoc + 44, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M34), gLoc + 48, 4);
+
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M41), gLoc + 52, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M42), gLoc + 56, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M43), gLoc + 60, 4);
+            grannyData.ReplaceRange(BitConverter.GetBytes(m.M44), gLoc + 64, 4);
+
+
+            int cLoc = (int)subDataOffset[1] + (boneIndexToReplace * 80) + 4;
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M11), cLoc + 4, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M12), cLoc + 8, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M13), cLoc + 12, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M14), cLoc + 16, 4);
+
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M21), cLoc + 20, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M22), cLoc + 24, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M23), cLoc + 28, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M24), cLoc + 32, 4);
+
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M31), cLoc + 36, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M32), cLoc + 40, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M33), cLoc + 44, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M34), cLoc + 48, 4);
+
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M41), cLoc + 52, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M42), cLoc + 56, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M43), cLoc + 60, 4);
+            cachedData.ReplaceRange(BitConverter.GetBytes(m.M44), cLoc + 64, 4);
             return 1;
         }
         public List<Mesh> GetMeshes()
         {
             List<Mesh> meshes = new List<Mesh>();
-            List<Bone> bones = GetBones();
+            Bone grannyRootBone = GetBones()[0];
 
             for(int i = 0; i < subDataCount[0]; i++)
             {
@@ -505,7 +558,8 @@ namespace StumpyUGXTools
                     m.vertices.Add(v);
                 }
 
-                m.rootMatrix = bones[0].boneMatrix.Inverted() * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
+                m.rootMatrix = grannyRootBone.boneMatrix;
+
                 meshes.Add(m);
             }
             return meshes;
@@ -563,10 +617,23 @@ namespace StumpyUGXTools
                 m.M43 = m43;
                 m.M44 = m44;
 
-                b.boneMatrix = m.Inverted();
-                if (i > 0) b.rootMatrix = bones[0].boneMatrix.Inverted();
-                else b.rootMatrix = b.boneMatrix.Inverted();
+                m.Invert();
+
+                //b.position = m.ExtractTranslation();
+                //Quaternion q = m.ExtractRotation();
+                //b.rotationE.X = (float)Math.Atan2(-2 * (q.Y * q.Z - q.W * q.X), q.W * q.W - q.X * q.X - q.Y * q.Y + q.Z * q.Z) * (float)(180d / Math.PI);
+                //b.rotationE.Y = (float)Math.Asin(2 * (q.X * q.Z + q.W * q.Y)) * (float)(180d / Math.PI);
+                //b.rotationE.Z = (float)Math.Atan2(-2 * (q.X * q.Y - q.W * q.Z), q.W * q.W + q.X * q.X - q.Y * q.Y - q.Z * q.Z) * (float)(180d / Math.PI);
+                //b.scale = m.ExtractScale();
+                //b.UpdateModelMatrix();
+                b.boneMatrix = m;// * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
                 bones.Add(b);
+
+                Console.WriteLine(m + "\n");
+                Console.WriteLine(m.Inverted() + "\n");
+                Console.WriteLine(b.boneMatrix + "\n");
+                Console.WriteLine(b.boneMatrix.Inverted() + "\n" + "\n");
+
             }
             return bones;
         }

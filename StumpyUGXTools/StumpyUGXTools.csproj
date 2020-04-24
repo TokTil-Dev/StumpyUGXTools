@@ -112,7 +112,6 @@
     <Compile Include="Utils\Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
-    <Compile Include="Utils\TextureLoaderParameters.cs" />
     <Compile Include="Utils\Utils.cs" />
     <Compile Include="Utils\Half.cs" />
   </ItemGroup>

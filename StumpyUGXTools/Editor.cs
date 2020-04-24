@@ -41,7 +41,7 @@ namespace StumpyUGXTools
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem keyBindingsToolStripMenuItem;
         private ToolStripMenuItem editToolStripMenuItem;
-        private ToolStripMenuItem textureReferencePathToolStripMenuItem;
+        private ToolStripMenuItem openConfigMenuItem;
         public Label versionLabel;
         private ToolStripMenuItem setUGXReferenceToolStripMenuItem;
         private ContextMenuStrip contextMenuStrip1;
@@ -63,7 +63,7 @@ namespace StumpyUGXTools
             this.fBXToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setUGXReferenceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.textureReferencePathToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.openConfigMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.keyBindingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.versionLabel = new System.Windows.Forms.Label();
@@ -151,17 +151,17 @@ namespace StumpyUGXTools
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.textureReferencePathToolStripMenuItem});
+            this.openConfigMenuItem});
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
             this.editToolStripMenuItem.Size = new System.Drawing.Size(39, 20);
             this.editToolStripMenuItem.Text = "Edit";
             // 
             // textureReferencePathToolStripMenuItem
             // 
-            this.textureReferencePathToolStripMenuItem.Name = "textureReferencePathToolStripMenuItem";
-            this.textureReferencePathToolStripMenuItem.Size = new System.Drawing.Size(194, 22);
-            this.textureReferencePathToolStripMenuItem.Text = "Texture Reference Path";
-            this.textureReferencePathToolStripMenuItem.Click += new System.EventHandler(this.textureReferencePathToolStripMenuItem_Click);
+            this.openConfigMenuItem.Name = "openConfigMenuItem";
+            this.openConfigMenuItem.Size = new System.Drawing.Size(194, 22);
+            this.openConfigMenuItem.Text = "Open Config";
+            this.openConfigMenuItem.Click += new System.EventHandler(this.openConfig_Click);
             // 
             // helpToolStripMenuItem
             // 
@@ -216,7 +216,7 @@ namespace StumpyUGXTools
         public Viewport viewport;
         public MeshEditor meshEditorTab;
         public MaterialEditor materialEditorTab;
-        public Log log;
+        public LogTab log;
 
         uint nullTexture = 65535;
         //imported meshes
@@ -233,8 +233,7 @@ namespace StumpyUGXTools
         List<Bone> referenceBones = new List<Bone>();
         List<uint> referenceDiffuseTextures = new List<uint>();
 
-        public bool needsSetup = false;
-        public string textureReferencePath = "";
+        public List<string> textureReferencePaths = new List<string>();
 
         // UI //
         enum SelectedView { Null, Mesh, Material, Log }
@@ -280,17 +279,13 @@ namespace StumpyUGXTools
             meshEditorTab = new MeshEditor();
             materialEditorTab = new MaterialEditor();
             viewport = new Viewport();
-            log = new Log();
+            log = new LogTab();
             viewport.InitViewport();
             Controls.Add(editorSelecter);
-
-            if(needsSetup)
-            {
-                textureReferencePathToolStripMenuItem_Click(null, null); //pick texture reference path
-                needsSetup = false;
-            }
-
-            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\treadfl.ugx"); //stumpy debug
+#if DEBUG
+            DoUGXLoad("F:\\HaloWarsModding\\HaloWarsDE\\mod\\art\\marinesniper_01.ugx");
+            editor.viewport.drawSkeleton = true;
+#endif
         }
         void EditorSelect(object o, EventArgs e)
         {
@@ -327,6 +322,7 @@ namespace StumpyUGXTools
                     f.InitTextureEditing();
                     f.InitMeshEditing();
                     f.filePath = path;
+                    materialDiffuseTextures = LoadDiffuseTextures(f);
                     UGXmeshes.AddRange(f.GetMeshes());
                     foreach (Mesh m in UGXmeshes) { m.InitDrawing(); }
                     UGXbones.AddRange(f.GetBones());
@@ -334,22 +330,32 @@ namespace StumpyUGXTools
                     ugx = f;
                     ugxLoaded = true;
 
+                    meshEditorTab.DeselectUGXBone();
+                    meshEditorTab.DeselectUGXMesh();
                     editorSelecter.SelectedIndex = -1;
                     editorSelecter.SelectedIndex = 0;
-                    log.LogOut("UGX Loaded: " + path);
+                    log.LogOut("UGX Loaded: " + path, LogTab.LogType.Message);
                     materialEditorTab.SetupPathView();
                     meshEditorTab.PopulateUGXTree();
                     meshEditorTab.PopulateUGXBoneTree();
-                    LoadDiffuseTextures();
                     viewport.viewport.Invalidate();
+#if DEBUG
+                    //Bone asshole = new Bone();
+                    //asshole.InitDrawing();
+                    //asshole.boneMatrix = Matrix4.Identity;
+                    //asshole.position = new Vector3(3, 3, 3);
+                    //asshole.UpdateModelMatrix();
+                    //UGXbones.Add(asshole);
+#endif
                     return 1;
                 }
             }
             else
             {
-                log.LogOut("File not found: " + path);
+                log.LogOut("File not found: " + path, LogTab.LogType.Warning);
                 return -1;
             }
+
         }
         void DoUGXUnload()
         {
@@ -375,8 +381,15 @@ namespace StumpyUGXTools
                     ugx.ReplaceMesh(m, UGXmeshes.IndexOf(m));
                 }
             }
+            foreach(Bone b in UGXbones)
+            {
+                if(b.hasBeenModified)
+                {
+                    ugx.ReplaceBone(b, UGXbones.IndexOf(b));
+                }
+            }
             ugx.Save(ugx.filePath);
-            log.LogOut("File saved.");
+            log.LogOut("File saved.", LogTab.LogType.Message);
         }
         public List<Mesh> ImportFBX(string path)
         {
@@ -427,45 +440,37 @@ namespace StumpyUGXTools
                 mesh.vertexCount = mesh.vertices.Count;
                 Console.WriteLine("Verts " + mesh.vertexCount);
                 Console.WriteLine("Faces " + mesh.faceCount);
-                if (mesh.vertexCount > 65535) log.LogOut("Warning: Imported mesh " + mesh.name + " has " + mesh.vertexCount + " vertices, which exceeds the maximum safe limit of 65535.");
+                if (mesh.vertexCount > 65535) log.LogOut("Warning: Imported mesh " + mesh.name + " has " + mesh.vertexCount + " vertices, which exceeds the maximum safe limit of 65535.", LogTab.LogType.Warning);
                 meshes.Add(mesh);
             }
 
             return meshes;
         }
-        public void LoadDiffuseTextures()
+        public List<uint> LoadDiffuseTextures(UGXFile f)
         {
-            foreach(int i in materialDiffuseTextures)
+            List<uint> textures = new List<uint>();
+            for (int i = 0; i < f.nodes[0].childNodes.Count; i++)
             {
-                GL.DeleteTexture(i);
-            }
-            materialDiffuseTextures.Clear();
-            for (int i = 0; i < materialEditorTab.matData.Count; i++)
-            {
-                uint name = 65535;
                 TextureTarget t;
-                if (materialEditorTab.matData[i].hasValue[0])
-                {
-                    try
-                    {
-                        if (File.Exists(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".ddx"))
-                        {
-                            ImageDDS.LoadFromDisk(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".ddx", out name, out t);
-                        }
-                        if (File.Exists(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".dds"))
-                        {
-                            ImageDDS.LoadFromDisk(textureReferencePath + materialEditorTab.matData[i].pathStrings[0] + ".dds", out name, out t);
-                        }
-                    }
-                    catch
-                    {
-                        log.LogOut("Could not load DDX/S at " + textureReferencePath + materialEditorTab.matData[i].pathStrings[0]);
-                    }
-                }
-                else name = nullTexture;
-                materialDiffuseTextures.Add(name);
+                uint tex = nullTexture;
 
+                if (f.nodes[0].childNodes[i].childNodes[1].childNodes[0].childNodes.Count == 1)
+                {
+                    bool loaded = false;
+                    foreach (string s in textureReferencePaths)
+                    {
+                        string path = s + f.nodes[0].childNodes[i].childNodes[1].childNodes[0].childNodes[0].attributeNameValues[0].decodedValue;
+                        if (File.Exists(path + ".dds")) { ImageDDS.LoadFromDisk(path + ".dds", out tex, out t); loaded = true; break; }
+                        if (File.Exists(path + ".ddx")) { ImageDDS.LoadFromDisk(path + ".ddx", out tex, out t); loaded = true; break; }
+                    }
+
+                    if (!loaded) log.LogOut("Could not load texture: " + f.nodes[0].childNodes[i].childNodes[1].childNodes[0].childNodes[0].attributeNameValues[0].decodedValue +
+                         " from any specified reference paths.", LogTab.LogType.Warning);
+
+                }
+                textures.Add(tex);
             }
+            return textures;
         }
 
         /////// WinForms Functions
@@ -485,7 +490,7 @@ namespace StumpyUGXTools
             {
                 if (Path.GetExtension(editor.ofd.FileName) != ".fbx" && Path.GetExtension(editor.ofd.FileName) != ".FBX")
                 {
-                    editor.log.LogOut("File selected was not an fbx.");
+                    editor.log.LogOut("File selected was not an fbx.", LogTab.LogType.Warning);
                     return;
                 }
 
@@ -516,7 +521,7 @@ namespace StumpyUGXTools
             {
                 if (Path.GetExtension(editor.ofd.FileName) != ".ugx" && Path.GetExtension(editor.ofd.FileName) != ".UGX")
                 {
-                    editor.log.LogOut("File selected was not an ugx.");
+                    editor.log.LogOut("File selected was not an ugx.", LogTab.LogType.Warning);
                     return;
                 }
             }
@@ -545,15 +550,9 @@ namespace StumpyUGXTools
         {
             DoUGXSave();
         }                   //save
-        private void textureReferencePathToolStripMenuItem_Click(object sender, EventArgs e)
+        private void openConfig_Click(object sender, EventArgs e)
         {
-            fbd.Description = "Select Texture Reference Path.\nThis path should be the art folder of a freshly extracted scenarioshared.era.";
-            if(fbd.ShowDialog() == DialogResult.OK)
-            {
-                textureReferencePath = fbd.SelectedPath;
-                File.WriteAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\StumpyUGXTools\\config.cfg", fbd.SelectedPath);
-            }
-            fbd.Description = "";
+            
         }   //set texture read path
         private void setUGXReferenceToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -573,24 +572,7 @@ namespace StumpyUGXTools
                         f.InitTextureEditing();
                         f.InitMeshEditing();
 
-                        //load diffuse textures
-                        for (int i = 0; i < f.nodes[0].childNodes.Count; i++)
-                        {
-                            uint tex = nullTexture;
-                            TextureTarget t;
-                            string path;
-                            if (f.nodes[0].childNodes[i].childNodes[1].childNodes[0].childNodes.Count == 1)
-                            { path = textureReferencePath + (string)f.nodes[0].childNodes[i].childNodes[1].childNodes[0].childNodes[0].attributeNameValues[0].decodedValue; }
-                            else { path = ""; }
-                            try
-                            {
-                                if (File.Exists(path + ".dds")) { ImageDDS.LoadFromDisk(path + ".dds", out tex, out t); }
-                                if (File.Exists(path + ".ddx")) { ImageDDS.LoadFromDisk(path + ".ddx", out tex, out t); }
-                            }
-                            catch { }
-
-                            referenceDiffuseTextures.Add(tex);
-                        }
+                        referenceDiffuseTextures = LoadDiffuseTextures(f);
 
                         //get meshes
                         foreach (Mesh m in f.GetMeshes())
@@ -758,7 +740,8 @@ namespace StumpyUGXTools
                 if (materialEditor.materialSelector.SelectedIndex > -1) materialEditor.matData[materialEditor.materialSelector.SelectedIndex].pathStrings[index] = value.Text;
                 if(index == 0)
                 {
-                    editor.LoadDiffuseTextures();
+                    //FIX!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    //editor.materialDiffuseTextures = editor.LoadDiffuseTextures(Editor.ugx);
                 }
             }
             void UUpdated(object o, EventArgs e)
@@ -1056,6 +1039,7 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(fbxMeshTree);
                 editor.Controls.Remove(referenceBoneSelecter);
                 DeselectUGXMesh();
+                DeselectUGXBone();
             }
 
             public class ImportRootNode
@@ -1134,14 +1118,14 @@ namespace StumpyUGXTools
                     toggleVisible.CheckOnClick = true;
                     toggleVisible.Checked = false;
                     toggleVisible.Click += new EventHandler(ToggleVisibleFunc);
-                    
+
                     remove.Text = "Mark For Deletion";
                     toggleVisible.CheckOnClick = false;
                     remove.Click += new EventHandler(RemoveFunc);
 
                     ugxPerMeshMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(RightClickFunc);
                     treeNode.ContextMenuStrip = ugxPerMeshMenuStrip;
-                    
+
                     t.Nodes.Add(treeNode);
                 }
 
@@ -1175,12 +1159,12 @@ namespace StumpyUGXTools
                     editor.meshEditorTab.SelectUGXMesh(editor.UGXmeshes[treeNode.Index]);
 
                     ugxPerMeshMenuStrip.Items.Clear();
-                    if(editor.UGXmeshes[treeNode.Index].markedForDeletion)
+                    if (editor.UGXmeshes[treeNode.Index].markedForDeletion)
                     {
                         ugxPerMeshMenuStrip.Items.Add(remove);
                         remove.Text = "Unmark For Deletion";
                     }
-                    if(!editor.UGXmeshes[treeNode.Index].markedForDeletion)
+                    if (!editor.UGXmeshes[treeNode.Index].markedForDeletion)
                     {
                         ugxPerMeshMenuStrip.Items.Add(toggleVisible);
                         ugxPerMeshMenuStrip.Items.Add(remove);
@@ -1312,7 +1296,7 @@ namespace StumpyUGXTools
                 e.Node.ForeColor = SystemColors.HighlightText;
                 foreach (UGXBoneNode bn in boneNodes)
                 {
-                    if(bn.treeNode == ugxBoneTree.SelectedNode)
+                    if (bn.treeNode == ugxBoneTree.SelectedNode)
                     {
                         SelectUGXBone(editor.UGXbones[bn.boneListIndex]);
                     }
@@ -1374,32 +1358,11 @@ namespace StumpyUGXTools
                     {
                         m.modelMatrix = editor.referenceBones[referenceBoneSelecter.SelectedIndex].boneMatrix.Inverted();
                     }
-                    if(editor.viewport != null) editor.viewport.viewport.Invalidate();
+                    if (editor.viewport != null) editor.viewport.viewport.Invalidate();
                 }
             }
 
-
             //value modification
-            EventHandler mMatID;
-            EventHandler mPosX;
-            EventHandler mPosY;
-            EventHandler mPosZ;
-            EventHandler mRotX;
-            EventHandler mRotY;
-            EventHandler mRotZ;
-            EventHandler mSclX;
-            EventHandler mSclY;
-            EventHandler mSclZ;
-
-            EventHandler bPosX;
-            EventHandler bPosY;
-            EventHandler bPosZ;
-            EventHandler bRotX;
-            EventHandler bRotY;
-            EventHandler bRotZ;
-            EventHandler bSclX;
-            EventHandler bSclY;
-            EventHandler bSclZ;
             void InitValueModification()
             {
                 mMatID = new EventHandler(SetMeshMatID);
@@ -1538,7 +1501,28 @@ namespace StumpyUGXTools
                 materialID.ValueChanged += new EventHandler(SetMeshMatID);
             }
 
-            //mesh modification
+            #region
+            EventHandler mMatID;
+            EventHandler mPosX;
+            EventHandler mPosY;
+            EventHandler mPosZ;
+            EventHandler mRotX;
+            EventHandler mRotY;
+            EventHandler mRotZ;
+            EventHandler mSclX;
+            EventHandler mSclY;
+            EventHandler mSclZ;
+
+            EventHandler bPosX;
+            EventHandler bPosY;
+            EventHandler bPosZ;
+            EventHandler bRotX;
+            EventHandler bRotY;
+            EventHandler bRotZ;
+            EventHandler bSclX;
+            EventHandler bSclY;
+            EventHandler bSclZ;
+
             Button replaceMesh;
             Label matIDLabel;
             NumericUpDown materialID;
@@ -1554,11 +1538,24 @@ namespace StumpyUGXTools
             NumericUpDown SclX;
             NumericUpDown SclY;
             NumericUpDown SclZ;
+            #endregion
 
             Mesh selectedMesh;
             public void SelectUGXMesh(Mesh selMesh)
             {
                 DeselectUGXBone();
+
+                PosX.ValueChanged += mPosX;
+                PosY.ValueChanged += mPosY;
+                PosZ.ValueChanged += mPosZ;
+
+                RotX.ValueChanged += mRotX;
+                RotY.ValueChanged += mRotY;
+                RotZ.ValueChanged += mRotZ;
+
+                SclX.ValueChanged += mSclX;
+                SclY.ValueChanged += mSclY;
+                SclZ.ValueChanged += mSclZ;
 
                 ugxMeshTree.SelectedNode = ugxMeshTree.Nodes[0].Nodes[editor.UGXmeshes.IndexOf(selMesh)];
 
@@ -1593,33 +1590,9 @@ namespace StumpyUGXTools
                     editor.Controls.Add(SclY);
                     editor.Controls.Add(SclZ);
                 }
-
-                PosX.ValueChanged += mPosX;
-                PosY.ValueChanged += mPosY;
-                PosZ.ValueChanged += mPosZ;
-
-                RotX.ValueChanged += mRotX;
-                RotY.ValueChanged += mRotY;
-                RotZ.ValueChanged += mRotZ;
-
-                SclX.ValueChanged += mSclX;
-                SclY.ValueChanged += mSclY;
-                SclZ.ValueChanged += mSclZ;
             }
             public void DeselectUGXMesh()
             {
-                if (ugxMeshTree.SelectedNode != null)
-                {
-                    ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
-                    ugxMeshTree.SelectedNode = null;
-                }
-
-                if (selectedMesh != null)
-                {
-                    selectedMesh.isHighlighted = false;
-                    selectedMesh = null;
-                }
-
                 PosX.ValueChanged -= mPosX;
                 PosY.ValueChanged -= mPosY;
                 PosZ.ValueChanged -= mPosZ;
@@ -1631,6 +1604,18 @@ namespace StumpyUGXTools
                 SclX.ValueChanged -= mSclX;
                 SclY.ValueChanged -= mSclY;
                 SclZ.ValueChanged -= mSclZ;
+
+                if (ugxMeshTree.SelectedNode != null)
+                {
+                    ugxMeshTree.SelectedNode.ForeColor = SystemColors.WindowText;
+                    ugxMeshTree.SelectedNode = null;
+                }
+
+                if (selectedMesh != null)
+                {
+                    selectedMesh.isHighlighted = false;
+                    selectedMesh = null;
+                }
 
                 editor.Controls.Remove(replaceMesh);
                 editor.Controls.Remove(matIDLabel);
@@ -1725,27 +1710,35 @@ namespace StumpyUGXTools
                 selectedMesh.hasBeenModified = true;
             }
 
-
             Bone selectedBone;
             public void SelectUGXBone(Bone b)
             {
                 DeselectUGXMesh();
 
-                ugxBoneTree.SelectedNode = boneNodes[editor.UGXbones.IndexOf(b)].treeNode;
+                PosX.ValueChanged += bPosX;
+                PosY.ValueChanged += bPosY;
+                PosZ.ValueChanged += bPosZ;
 
+                RotX.ValueChanged += bRotX;
+                RotY.ValueChanged += bRotY;
+                RotZ.ValueChanged += bRotZ;
+
+                SclX.ValueChanged += bSclX;
+                SclY.ValueChanged += bSclY;
+                SclZ.ValueChanged += bSclZ;
+
+                ugxBoneTree.SelectedNode = boneNodes[editor.UGXbones.IndexOf(b)].treeNode;
                 selectedBone = b;
                 selectedBone.isSelected = true;
-                Matrix4 selMat = selectedBone.transformMatrix;
-                b.isSelected = true;
-                PosX.Value = (decimal)selMat.ExtractTranslation().X;
-                PosY.Value = (decimal)selMat.ExtractTranslation().Y;
-                PosZ.Value = (decimal)selMat.ExtractTranslation().Z;
-                RotX.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().Y;
-                RotY.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().Z;
-                RotZ.Value = (decimal)selMat.ExtractRotation().ToAxisAngle().W;
-                SclX.Value = (decimal)selMat.ExtractScale().X;
-                SclY.Value = (decimal)selMat.ExtractScale().Y;
-                SclZ.Value = (decimal)selMat.ExtractScale().Z;
+                PosX.Value = (decimal)selectedBone.position.X;
+                PosY.Value = (decimal)selectedBone.position.Y;
+                PosZ.Value = (decimal)selectedBone.position.Z;
+                RotX.Value = (decimal)selectedBone.rotationE.X;
+                RotY.Value = (decimal)selectedBone.rotationE.Y;
+                RotZ.Value = (decimal)selectedBone.rotationE.Z;
+                SclX.Value = (decimal)selectedBone.scale.X;
+                SclY.Value = (decimal)selectedBone.scale.Y;
+                SclZ.Value = (decimal)selectedBone.scale.Z;
 
                 if (editor.editorSelecter.SelectedIndex == 0)
                 {
@@ -1762,22 +1755,22 @@ namespace StumpyUGXTools
                     editor.Controls.Add(SclY);
                     editor.Controls.Add(SclZ);
                 }
-
-                PosX.ValueChanged += bPosX;
-                PosY.ValueChanged += bPosY;
-                PosZ.ValueChanged += bPosZ;
-
-                RotX.ValueChanged += bRotX;
-                RotY.ValueChanged += bRotY;
-                RotZ.ValueChanged += bRotZ;
-
-                SclX.ValueChanged += bSclX;
-                SclY.ValueChanged += bSclY;
-                SclZ.ValueChanged += bSclZ;
             }
             public void DeselectUGXBone()
             {
-                if(ugxBoneTree.SelectedNode != null)
+                PosX.ValueChanged -= bPosX;
+                PosY.ValueChanged -= bPosY;
+                PosZ.ValueChanged -= bPosZ;
+
+                RotX.ValueChanged -= bRotX;
+                RotY.ValueChanged -= bRotY;
+                RotZ.ValueChanged -= bRotZ;
+
+                SclX.ValueChanged -= bSclX;
+                SclY.ValueChanged -= bSclY;
+                SclZ.ValueChanged -= bSclZ;
+
+                if (ugxBoneTree.SelectedNode != null)
                 {
                     ugxBoneTree.SelectedNode.ForeColor = SystemColors.WindowText;
                     ugxBoneTree.SelectedNode = null;
@@ -1801,18 +1794,6 @@ namespace StumpyUGXTools
                 editor.Controls.Remove(SclX);
                 editor.Controls.Remove(SclY);
                 editor.Controls.Remove(SclZ);
-
-                PosX.ValueChanged -= bPosX;
-                PosY.ValueChanged -= bPosY;
-                PosZ.ValueChanged -= bPosZ;
-
-                RotX.ValueChanged -= bRotX;
-                RotY.ValueChanged -= bRotY;
-                RotZ.ValueChanged -= bRotZ;
-
-                SclX.ValueChanged -= bSclX;
-                SclY.ValueChanged -= bSclY;
-                SclZ.ValueChanged -= bSclZ;
             }
 
             void SetBonePosX(object o, EventArgs e)
@@ -1869,6 +1850,14 @@ namespace StumpyUGXTools
                 selectedBone.UpdateModelMatrix();
                 selectedBone.hasBeenModified = true;
             }
+            void UpdateMeshes()
+            {
+                foreach(Mesh m in editor.UGXmeshes)
+                {
+
+                }
+            }
+
         }
         public class MaterialEditor : EditorTab
         {
@@ -2013,7 +2002,7 @@ namespace StumpyUGXTools
                     }
                     matData.Add(d);
                 }
-                editor.log.LogOut("Found " + matData.Count + " materials.");
+                editor.log.LogOut("Found " + matData.Count + " materials.", LogTab.LogType.Message);
             }
             public void SaveMaterial()
             {
@@ -2081,28 +2070,39 @@ namespace StumpyUGXTools
                 matData.Clear();
             }
         }
-        public class Log : EditorTab
+        public class LogTab : EditorTab
         {
-            TextBox log = new TextBox();
-            public Log()
+            public enum LogType { Error, Warning, Message }
+            RichTextBox log = new RichTextBox();
+            public LogTab()
             {
                 tab.Text = "Log     ";
                 log.Multiline = true;
                 log.Location = new Point(editor.EditorToolsLeftMargin, 50);
                 log.Size = new Size(editor.EditorToolSideWindowWidth, editor.Height - 97);
-                log.ScrollBars = ScrollBars.Vertical;
+                log.ScrollBars = RichTextBoxScrollBars.Vertical;
+                log.BorderStyle = BorderStyle.FixedSingle;
+                log.ReadOnly = true;
             }
 
             int newMessages = 0;
             bool disableAlert = false;
-            public void LogOut(object o)
+            public void LogOut(object o, LogType t)
             {
 #if DEBUG
                 Console.WriteLine(o.ToString());
 #endif
+                string s = "";
+                log.SelectionFont = new Font(log.Font, FontStyle.Bold);
+                if (t == LogType.Error) { s = "> ERROR: "; }
+                if (t == LogType.Warning) { s = "> WARNING: "; }
+                if (t == LogType.Message) { s = "> "; }
+                log.AppendText(s);
 
+                log.SelectionFont = new Font(log.Font, FontStyle.Regular);
                 log.AppendText(o.ToString());
                 log.AppendText(Environment.NewLine);
+                
                 if (!disableAlert)
                 {
                     newMessages += 1;
@@ -2350,11 +2350,6 @@ namespace StumpyUGXTools
                 {
                     k.PollKeyDown(e);
                 }
-
-                if(e.KeyCode == Keys.L)
-                {
-                    editor.log.LogOut("LogOut()");
-                }
             }
             void viewport_KeyUp(object o, KeyEventArgs e)
             {
@@ -2479,7 +2474,7 @@ namespace StumpyUGXTools
                 float radius = 0;
                 public void UpdateCamera()
                 {
-                    viewMatrix = new Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1) * Matrix4.LookAt(position, target, new Vector3(0, 1, 0));
+                    viewMatrix = new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) * Matrix4.LookAt(position, target, new Vector3(0, 1, 0));
                     GL.BindBuffer(BufferTarget.UniformBuffer, editor.viewport.UBO);
                     GL.BufferSubData(BufferTarget.UniformBuffer, new IntPtr(Marshal.SizeOf(new Matrix4())), Marshal.SizeOf(new Matrix4()), ref viewMatrix);
                     GL.BindBuffer(BufferTarget.UniformBuffer, 0);
@@ -2742,7 +2737,7 @@ void main()
 
                     #region Draw Letters
                     #region Z
-                    m = Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(0, 0, -gridQuadrantSize - .5f));
+                    m = Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(0, 0, gridQuadrantSize + .5f));
                     
                     GL.UniformMatrix4(mLoc, false, ref m);
                     GL.Uniform4(cLoc, new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
@@ -2756,7 +2751,7 @@ void main()
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
                     #endregion
                     #region X
-                    m = Matrix4.CreateRotationY((float)Math.PI / 2) * Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(-gridQuadrantSize - .5f, 0, 0));
+                    m = Matrix4.CreateRotationY((float)Math.PI / 2) * Matrix4.CreateScale(.25f, 1, .25f) * Matrix4.CreateTranslation(new Vector3(gridQuadrantSize + .5f, 0, 0));
 
                     GL.UniformMatrix4(mLoc, false, ref m);
                     GL.Uniform4(cLoc, new Vector4(0.4f, 0.4f, 1.0f, 1.0f));
@@ -3252,17 +3247,17 @@ void main()
         }
         public class Bone
         {
-            public Matrix4 boneMatrix;
+            public Matrix4 boneMatrix = Matrix4.Identity;
             public Matrix4 transformMatrix = Matrix4.Identity;
-            public Matrix4 rootMatrix = Matrix4.Identity;
             public Vector3 position = Vector3.Zero;
             public Vector3 rotationE = new Vector3();
             public Vector3 scale = Vector3.One;
             public void UpdateModelMatrix()
             {
-                transformMatrix = Matrix4.CreateScale(scale);
-                transformMatrix *= Matrix4.CreateFromQuaternion(Quaternion.FromEulerAngles(rotationE * (float)(Math.PI / 180)));
+                transformMatrix = Matrix4.Identity;
                 transformMatrix *= Matrix4.CreateTranslation(position);
+                transformMatrix *= Matrix4.CreateFromQuaternion(Quaternion.FromEulerAngles(rotationE * (float)(Math.PI / 180)));
+                transformMatrix *= Matrix4.CreateScale(scale);
                 editor.viewport.viewport.Invalidate();
             }
 
@@ -3396,7 +3391,6 @@ void main()
                     0,3,4,
                     0,4,1,
 
-
                     1,5,2,
                     2,5,3,
                     3,5,4,
@@ -3424,7 +3418,7 @@ void main()
             public void Draw()
             {
                 GL.UseProgram(boneShader);
-                Matrix4 finalBoneMatrix = boneMatrix * rootMatrix * transformMatrix * new Matrix4(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
+                Matrix4 finalBoneMatrix = boneMatrix * transformMatrix;
                 GL.UniformMatrix4(mLoc, false, ref finalBoneMatrix);
 
                 if (!drawingSelectionColors)
